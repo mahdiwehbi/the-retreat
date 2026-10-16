@@ -17,6 +17,8 @@
   .seg{display:flex;flex-wrap:wrap;gap:6px}
   .seg button{min-height:40px;border-radius:9px;border:1px solid var(--line);background:var(--surface);padding:6px 12px;font-weight:600}
   .seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .sess{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px}
+  .sess summary{cursor:pointer;line-height:1.5}
   .badge{display:inline-block;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--muted)}
   .badge.open{background:var(--good);color:var(--surface)}
   .list{display:flex;flex-direction:column}
@@ -43,6 +45,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/config.js"></script>
+<script src="/sessions.js"></script>
 <script src="/lib.js"></script>
 <script src="/sap.js"></script>
 <script>
@@ -150,8 +153,20 @@
         <section class="card"><h2 style="font-size:18px">Now</h2>${ctl}</section>${podium}
         <section class="card"><h2 style="font-size:18px">Team scores</h2>${(D.board || []).map((t) => `<div class="pts-row ${teamClass(t.team_id)}"><span class="row"><span class="team-dot"></span><strong>${esc(t.name)}</strong></span><span class="timer">${t.manual + t.hunt + t.quiz}</span></div>`).join('')}</section>
       </div>
-      <section class="card"><h2 style="font-size:18px">Questions</h2><div class="list">${D.acts.map((x) => `<div class="li ${x.id === st.activity_id ? 'current' : ''}"><span class="badge">${KINDS[x.kind]}</span><span class="grow">#${x.position} ${esc(x.title)}</span>
-        <button class="btn small" data-do="show" data-id="${x.id}">Show</button><button class="btn small primary" data-do="showopen" data-id="${x.id}">Show + open</button></div>`).join('') || '<p class="muted">No questions yet. Add them in the Questions tab.</p>'}</div></section>
+      <section class="card"><h2 style="font-size:18px">Sessions and questions</h2>${(() => {
+        const qrow = (x) => `<div class="li ${x.id === st.activity_id ? 'current' : ''}"><span class="badge">${KINDS[x.kind]}</span><span class="grow">#${x.position} ${esc(x.title)}</span>
+        <button class="btn small" data-do="show" data-id="${x.id}">Show</button><button class="btn small primary" data-do="showopen" data-id="${x.id}">Show + open</button></div>`;
+        if (!D.acts.length) return '<p class="muted">No questions yet. Add them in the Questions tab.</p>';
+        const S = window.WR_SESSIONS || []; const used = new Set();
+        const cur = (st.screen === 'session' || st.screen === 'hunt') ? st.session_key : ((S.of && D.acts.find((x) => x.id === st.activity_id)) ? (S.of(D.acts.find((x) => x.id === st.activity_id).position) || {}).key : null);
+        const blocks = S.map((s) => { const qs = D.acts.filter((a) => a.position >= s.from && a.position <= s.to); qs.forEach((a) => used.add(a.id));
+          return `<details class="sess" ${s.key === cur ? 'open' : ''}><summary><span class="badge">Day ${s.day}</span> <strong>${esc(s.label)}</strong> · ${esc(s.title)} <span class="small muted">${esc(s.time)}${qs.length ? ' · ' + qs.length + ' q' : ''}</span></summary>
+            <div class="stack" style="gap:8px;padding-top:8px"><div class="row"><button class="btn small primary" data-do="session" data-v="${s.key}">Show session card</button>${s.screen === 'hunt' ? `<button class="btn small" data-do="sessionhunt" data-v="${s.key}">Show word race / hunt</button>` : ''}</div>
+            <ul class="small muted" style="margin:0;padding-left:1.2em">${s.host.map((h) => `<li>${esc(h)}</li>`).join('')}</ul>
+            <div class="list">${qs.map(qrow).join('')}</div></div></details>`; }).join('');
+        const rest = D.acts.filter((a) => !used.has(a.id));
+        return blocks + (rest.length ? `<details class="sess"><summary><strong>Other questions</strong></summary><div class="list">${rest.map(qrow).join('')}</div></details>` : '');
+      })()}</section>
     </div>`;
   }
 
@@ -330,6 +345,8 @@
     try {
       switch (b.dataset.do) {
         case 'screen': await act('host_set_state', { p_patch: { screen: v } }); break;
+        case 'session': await act('host_set_state', { p_patch: { screen: 'session', session: v } }); break;
+        case 'sessionhunt': await act('host_set_state', { p_patch: { screen: 'hunt', session: v } }); break;
         case 'phase': await act('host_set_state', { p_patch: { phase: v } }); break;
         case 'show': await act('host_set_state', { p_patch: { activity_id: id, screen: 'activity', phase: 'open' } }); break;
         case 'showopen': await act('host_set_state', { p_patch: { activity_id: id, screen: 'activity', phase: 'open' } }, 'Answers are open'); break;

@@ -12,6 +12,8 @@
   body{font-size:clamp(16px,1.6vw,34px);overflow:hidden}
   .scr{height:100%;display:flex;flex-direction:column;padding:clamp(16px,2.6vw,56px);padding-left:max(clamp(16px,2.6vw,56px),env(safe-area-inset-left,0px));padding-right:max(clamp(16px,2.6vw,56px),env(safe-area-inset-right,0px));gap:1em}
   .top{display:flex;justify-content:space-between;align-items:baseline;gap:1em;flex-wrap:wrap}
+  .sess-steps{font-size:1.5em;line-height:1.35;margin:.4em 0 0;padding-left:1.3em;display:flex;flex-direction:column;gap:.45em}
+  .sess-steps li::marker{color:var(--accent);font-weight:800}
   .kick{font-size:.75em;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
   .ttl{font-family:var(--display);font-weight:800;font-size:2.3em;line-height:1.05;letter-spacing:-.01em;text-wrap:balance;margin:0}
   .main{flex:1;min-height:0;display:flex;flex-direction:column;gap:1em}
@@ -96,6 +98,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="/config.js"></script>
+<script src="/sessions.js"></script>
 <script src="/lib.js"></script>
 <script>
 (function () {
@@ -145,9 +148,21 @@
   const playerName = (id) => (D.players.find((p) => p.id === id) || {}).name || 'Someone';
 
   function foot() {
-    return `<div class="foot"><span class="mini">${qrImg('#qr-mini')}<span>Join at <b>${esc(host)}</b></span></span><span>${esc(WR.cfg.eventName)}</span></div>`;
+    const s = curSession();
+    return `<div class="foot"><span class="mini">${qrImg('#qr-mini')}<span>Join at <b>${esc(host)}</b></span></span><span>${s ? 'Day ' + s.day + ' · ' + esc(s.label) + ' · ' + esc(s.title) : esc(WR.cfg.eventName)}</span></div>`;
   }
 
+  function curSession() {
+    const S = window.WR_SESSIONS; if (!S) return null;
+    if (D.st.screen === 'session' || D.st.screen === 'hunt') return S.get(D.st.session_key);
+    const a = D.acts.find((x) => x.id === D.st.activity_id); return a ? S.of(a.position) : null;
+  }
+  function vSession() {
+    const s = (window.WR_SESSIONS && WR_SESSIONS.get(D.st.session_key)) || null;
+    if (!s) return vLobby();
+    return `<div class="stack" style="gap:.5em;margin-block:auto"><div class="kick">Day ${s.day} · ${esc(s.label)} · ${esc(s.time)}</div><h1 class="ttl" style="font-size:3em">${esc(s.title)}</h1>
+      <ol class="sess-steps">${s.show.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>`;
+  }
   function vLobby() {
     const byTeam = D.teams.map((t) => ({ t, ps: D.players.filter((p) => p.team_id === t.id) }));
     return `<div class="lobby">${qrImg('#qr-src')}<div class="stack" style="gap:.6em;min-width:0">
@@ -274,7 +289,7 @@
   }
 
   function paint() {
-    const v = ({ lobby: vLobby, activity: vActivity, leaderboard: vLeaderboard, teams: vTeams, podium: vPodium, hunt: vHunt })[D.st.screen] || vLobby;
+    const v = ({ lobby: vLobby, activity: vActivity, leaderboard: vLeaderboard, teams: vTeams, podium: vPodium, hunt: vHunt, session: vSession })[D.st.screen] || vLobby;
     const html = `<div class="main">${v()}</div>${D.st.screen === 'lobby' ? '' : foot()}`;
     if (html !== lastHtml) { scr.innerHTML = html; lastHtml = html; }
     tick();

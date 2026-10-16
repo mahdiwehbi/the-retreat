@@ -31,6 +31,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/config.js"></script>
+<script src="/sessions.js"></script>
 <script src="/lib.js"></script>
 <script>
 (function () {
@@ -152,6 +153,10 @@
   }
 
   function body() {
+    if (st && st.screen === 'session' && window.WR_SESSIONS) {
+      const s = WR_SESSIONS.get(st.session_key);
+      if (s) return `<section class="card"><div class="eyebrow">Day ${s.day} · ${esc(s.label)} · ${esc(s.time)}</div><h1 style="font-size:24px">${esc(s.title)}</h1><ol style="margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px">${s.show.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></section>`;
+    }
     if (!st || !act || st.phase === 'idle') {
       return waitingCard('Look at the screen', 'The next question will appear here. Keep this page open.');
     }

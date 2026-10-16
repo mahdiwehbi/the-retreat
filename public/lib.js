@@ -153,10 +153,15 @@
   const flow = {
     build(acts) {
       const s = [{ k: 'lobby' }];
-      acts.forEach((a) => {
-        s.push({ k: 'q', a });
-        if (a.kind === 'quiz') { s.push({ k: 'reveal', a }); s.push({ k: 'lb', a }); }
+      const addQ = (a) => { s.push({ k: 'q', a }); if (a.kind === 'quiz') { s.push({ k: 'reveal', a }); s.push({ k: 'lb', a }); } };
+      const S = window.WR_SESSIONS || [];
+      const used = new Set();
+      S.forEach((ses) => {
+        s.push({ k: 'session', s: ses });
+        if (ses.screen === 'hunt') s.push({ k: 'hunt', s: ses });
+        acts.filter((a) => a.position >= ses.from && a.position <= ses.to).forEach((a) => { used.add(a.id); addQ(a); });
       });
+      acts.filter((a) => !used.has(a.id)).forEach(addQ);
       s.push({ k: 'teams' });
       [1, 2, 3].forEach((n) => s.push({ k: 'podium', n }));
       return s;
@@ -165,6 +170,8 @@
       if (!st) return 0;
       const i = steps.findIndex((x) => {
         if (x.k === 'lobby') return st.screen === 'lobby';
+        if (x.k === 'session') return st.screen === 'session' && st.session_key === x.s.key;
+        if (x.k === 'hunt') return st.screen === 'hunt' && st.session_key === x.s.key;
         if (x.k === 'q') return st.screen === 'activity' && st.activity_id === x.a.id && st.phase !== 'reveal';
         if (x.k === 'reveal') return st.screen === 'activity' && st.activity_id === x.a.id && st.phase === 'reveal';
         if (x.k === 'lb') return st.screen === 'leaderboard' && st.activity_id === x.a.id;
@@ -181,6 +188,8 @@
     },
     patch(x) {
       if (x.k === 'lobby') return { screen: 'lobby' };
+      if (x.k === 'session') return { screen: 'session', session: x.s.key };
+      if (x.k === 'hunt') return { screen: 'hunt', session: x.s.key };
       if (x.k === 'q') return { activity_id: x.a.id, screen: 'activity', phase: 'open' };
       if (x.k === 'reveal') return { activity_id: x.a.id, screen: 'activity', phase: 'reveal' };
       if (x.k === 'lb') return { screen: 'leaderboard' };
@@ -190,6 +199,8 @@
     label(x) {
       if (!x) return 'End';
       if (x.k === 'lobby') return 'Join screen';
+      if (x.k === 'session') return x.s.label + ': ' + x.s.title;
+      if (x.k === 'hunt') return 'Word race / hunt on screen';
       if (x.k === 'q') return '#' + x.a.position + ' ' + x.a.title;
       if (x.k === 'reveal') return 'Reveal the answer';
       if (x.k === 'lb') return 'Top players';
