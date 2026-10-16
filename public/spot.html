@@ -47,6 +47,7 @@
 
   async function load() {
     [spot] = await rows('hunt_spots', (q) => q.eq('code', code));
+    if (spot) { const [s] = await rows('state'); if (!WR.isLive(s, 'lake')) { app.innerHTML = `<section class="card" style="text-align:center"><div class="eyebrow">WAP deck</div><div class="big-msg">Patience…</div><p style="margin:0">The WAP deck opens at the lake.</p><a class="btn primary block" href="/">Open the game</a></section>`; return; } }
     if (!spot) { location.replace('/card?c=' + encodeURIComponent(code)); return; }
     clues = (await rows('hunt_cards', (q) => q.eq('kind', 'find').order('position'))) || [];
     try { mine = await rpc('hunt_my_team', { p_pid: me.id, p_token: me.token }); } catch (e) { if (/join again/i.test(e.message)) { WR.setMe(null); location.reload(); return; } }

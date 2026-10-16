@@ -160,14 +160,14 @@
   function vSession() {
     const s = (window.WR_SESSIONS && WR_SESSIONS.get(D.st.session_key)) || null;
     if (!s) return vLobby();
-    return `<div class="stack" style="gap:.5em;margin-block:auto"><div class="kick">Day ${s.day} · ${esc(s.label)} · ${esc(s.time)}</div><h1 class="ttl" style="font-size:3em">${esc(s.title)}</h1>
+    return `<div class="stack" style="gap:.5em;margin-block:auto"><div class="kick">Day ${s.day} · ${esc(s.label)} · ${esc(s.time)}</div><h1 class="ttl" style="font-size:3.4em">${esc(s.title)}</h1>${s.sub ? `<div style="font-size:1.6em;font-weight:600;color:var(--muted)">${esc(s.sub)}</div>` : ''}
       <ol class="sess-steps">${s.show.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>`;
   }
   function vLobby() {
     const byTeam = D.teams.map((t) => ({ t, ps: D.players.filter((p) => p.team_id === t.id) }));
     return `<div class="lobby">${qrImg('#qr-src')}<div class="stack" style="gap:.6em;min-width:0">
-      <img src="/logo.png" alt="WaSH Sector Lebanon" style="height:2.4em;width:auto;align-self:flex-start"><div class="kick">${esc(WR.cfg.eventName)}</div><div class="ttl">Scan to join</div>
-      <div class="muted">or open</div><div class="url">${esc(host)}</div>
+      <img src="/logo.png" alt="WaSH Sector Lebanon" style="height:2.4em;width:auto;align-self:flex-start"><div class="kick">${esc(WR.cfg.eventName)}</div><div class="ttl">Scan your badge to join</div>
+      <div class="muted">No badge? Scan this code or open</div><div class="url">${esc(host)}</div>
       <div class="muted">${D.players.length} joined</div></div></div>
       <div class="teamcols">${byTeam.map(({ t, ps }) => `<div class="teamcol ${teamClass(t.id)}"><h3><span>${esc(t.name)}</span><span class="timer">${ps.length}</span></h3><div class="names">${ps.map((p) => `<span>${esc(p.name)}</span>`).join('')}</div></div>`).join('')}</div>`;
   }
@@ -281,7 +281,7 @@
     const pat = String(H.pattern || '').split(',').map(Number).filter(Boolean); const groups = pat.length ? pat : [H.length];
     const winner = H.winner ? D.teams.find((t) => t.id === H.winner) : null;
     const blanks = groups.map((len) => `<div class="tiles">${Array.from({ length: len }, () => '<span></span>').join('')}</div>`).join('');
-    return `<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Word race · ${H.length} letters · 6 cards per team</div><h1 class="ttl">${winner ? esc(winner.name) + ' cracked it first!' : 'Crack the secret word'}</h1></div></div>
+    return `<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Message in a bottle · ${H.length} letters · 6 badges per team</div><h1 class="ttl">${winner ? esc(winner.name) + ' cracked it first!' : 'Crack the message in the bottle'}</h1></div></div>
       <div style="display:flex;flex-wrap:wrap;gap:.6em 1.4em">${blanks}</div>
       <div class="hunt">${D.teams.map((t) => { const h = (H.teams || []).find((x) => x.team_id === t.id) || { found: 0, cards: 0, letters: 0, guesses: 0 }; const solved = (H.solved_teams || []).includes(t.id);
         return `<div class="${teamClass(t.id)}"><div class="hunt-head"><b><span class="team-dot"></span>${esc(t.name)}</b><span class="muted">${h.found} of ${h.cards} cards · ${h.letters} of ${H.length} letters · ${h.guesses} of 5 guesses used${solved ? ' · solved' : ''}</span></div>

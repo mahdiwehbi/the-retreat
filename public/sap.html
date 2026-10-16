@@ -52,6 +52,8 @@
     teams = await rows('teams', (q) => q.order('id'));
     if (viewTeam) return live(['sap_households', 'sap_sites'], async () => { summary = await rpc('sap_summary', { p_team: viewTeam }); renderSummaryOnly(); }, 5000);
     try { me = await WR.checkMe(); } catch (e) { me = WR.getMe(); }
+    const [s0] = await rows('state');
+    if (!WR.isLive(s0, 'sap')) { app.innerHTML = `<section class="card" style="text-align:center"><div class="eyebrow">Site test</div><div class="big-msg">Patience…</div><p style="margin:0">The site test opens at the lake.</p><a class="btn primary block" href="/">Open the game</a></section>`; return; }
     if (!me) return WR.renderJoin(app, (m) => { me = m; boot(); });
     boot();
   }

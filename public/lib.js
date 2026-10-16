@@ -155,10 +155,12 @@
       const s = [{ k: 'lobby' }];
       const addQ = (a) => { s.push({ k: 'q', a }); if (a.kind === 'quiz') { s.push({ k: 'reveal', a }); s.push({ k: 'lb', a }); } };
       const S = window.WR_SESSIONS || [];
-      const used = new Set();
+      const used = new Set(); const open = [];
       S.forEach((ses) => {
-        s.push({ k: 'session', s: ses });
-        if (ses.screen === 'hunt') s.push({ k: 'hunt', s: ses });
+        (ses.opens || []).forEach((g) => { if (!open.includes(g)) open.push(g); });
+        const lv = open.slice();
+        s.push({ k: 'session', s: ses, live: lv });
+        if (ses.screen === 'hunt') s.push({ k: 'hunt', s: ses, live: lv });
         acts.filter((a) => a.position >= ses.from && a.position <= ses.to).forEach((a) => { used.add(a.id); addQ(a); });
       });
       acts.filter((a) => !used.has(a.id)).forEach(addQ);
@@ -188,8 +190,8 @@
     },
     patch(x) {
       if (x.k === 'lobby') return { screen: 'lobby' };
-      if (x.k === 'session') return { screen: 'session', session: x.s.key };
-      if (x.k === 'hunt') return Object.assign({ screen: 'hunt', session: x.s.key }, x.s.key === 'd1-race' ? { hunt_live: true } : {});
+      if (x.k === 'session') return { screen: 'session', session: x.s.key, live: x.live };
+      if (x.k === 'hunt') return { screen: 'hunt', session: x.s.key, live: x.live };
       if (x.k === 'q') return { activity_id: x.a.id, screen: 'activity', phase: 'open' };
       if (x.k === 'reveal') return { activity_id: x.a.id, screen: 'activity', phase: 'reveal' };
       if (x.k === 'lb') return { screen: 'leaderboard' };
@@ -199,8 +201,8 @@
     label(x) {
       if (!x) return 'End';
       if (x.k === 'lobby') return 'Join screen';
-      if (x.k === 'session') return x.s.label + ': ' + x.s.title;
-      if (x.k === 'hunt') return 'Word race / hunt on screen';
+      if (x.k === 'session') return x.s.label + ': ' + x.s.title + (x.s.sub ? ' (' + x.s.sub + ')' : '');
+      if (x.k === 'hunt') return x.s.key === 'd1-race' ? 'Word race on the screen' : 'Hunt progress on the screen';
       if (x.k === 'q') return '#' + x.a.position + ' ' + x.a.title;
       if (x.k === 'reveal') return 'Reveal the answer';
       if (x.k === 'lb') return 'Top players';
@@ -214,5 +216,8 @@
   function getPin() { try { return localStorage.getItem('wr-pin') || ''; } catch (e) { return ''; } }
   function setPin(v) { try { v ? localStorage.setItem('wr-pin', v) : localStorage.removeItem('wr-pin'); } catch (e) {} }
 
-  window.WR = { flow, getPin, setPin, cfg, configured, sb, $, esc, LETTERS, teamClass, getMe, setMe, rpc, rows, live, syncClock, now, toast, uploadPhoto, checkMe, renderJoin, setupNotice, friendly };
+  // QR groups: closed until the presenter reaches the session that opens them.
+  const GROUPS = { badges: 'Name badges (word race)', rooms: 'Room bonus cards', lake: 'Lake: WAP deck and field tasks', sap: 'Site test (tent and site cards)' };
+  const isLive = (st, g) => !!(st && Array.isArray(st.live) && st.live.includes(g));
+  window.WR = { GROUPS, isLive, flow, getPin, setPin, cfg, configured, sb, $, esc, LETTERS, teamClass, getMe, setMe, rpc, rows, live, syncClock, now, toast, uploadPhoto, checkMe, renderJoin, setupNotice, friendly };
 })();

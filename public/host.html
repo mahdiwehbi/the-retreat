@@ -160,7 +160,7 @@
         const S = window.WR_SESSIONS || []; const used = new Set();
         const cur = (st.screen === 'session' || st.screen === 'hunt') ? st.session_key : ((S.of && D.acts.find((x) => x.id === st.activity_id)) ? (S.of(D.acts.find((x) => x.id === st.activity_id).position) || {}).key : null);
         const blocks = S.map((s) => { const qs = D.acts.filter((a) => a.position >= s.from && a.position <= s.to); qs.forEach((a) => used.add(a.id));
-          return `<details class="sess" ${s.key === cur ? 'open' : ''}><summary><span class="badge">Day ${s.day}</span> <strong>${esc(s.label)}</strong> · ${esc(s.title)} <span class="small muted">${esc(s.time)}${qs.length ? ' · ' + qs.length + ' q' : ''}</span></summary>
+          return `<details class="sess" ${s.key === cur ? 'open' : ''}><summary><span class="badge">Day ${s.day}</span> <strong>${esc(s.label)}</strong> · ${esc(s.title)}${s.sub ? ' <span class="muted">(' + esc(s.sub) + ')</span>' : ''} <span class="small muted">${esc(s.time)}${qs.length ? ' · ' + qs.length + ' q' : ''}</span></summary>
             <div class="stack" style="gap:8px;padding-top:8px"><div class="row"><button class="btn small primary" data-do="session" data-v="${s.key}">Show session card</button>${s.screen === 'hunt' ? `<button class="btn small" data-do="sessionhunt" data-v="${s.key}">Show word race / hunt</button>` : ''}</div>
             <ul class="small muted" style="margin:0;padding-left:1.2em">${s.host.map((h) => `<li>${esc(h)}</li>`).join('')}</ul>
             <div class="list">${qs.map(qrow).join('')}</div></div></details>`; }).join('');
@@ -265,9 +265,9 @@
     return `<div class="stack">
       <section class="card"><h2 style="font-size:18px">Secret word</h2><form class="row" data-form="secret"><input name="secret" value="${esc((() => { const p = String(D.pattern || '').split(',').map(Number).filter(Boolean); if (!p.length || p.reduce((a, b) => a + b, 0) !== D.secret.length) return D.secret; let i = 0; return p.map((n) => { const w = D.secret.slice(i, i + n); i += n; return w; }).join(' '); })())}" aria-label="Secret word" style="flex:1 1 200px;text-transform:uppercase"><button class="btn small primary">Save</button></form>
         <p class="muted small" style="margin:0">${D.secret.length} letters. Type it with spaces (WASH TOGETHER) so the screen shows the word breaks. Only you see this.</p></section>
-      <section class="card"><div class="spread"><h2 style="font-size:18px">Badges / word race</h2><span class="badge ${D.st.hunt_live ? 'open' : ''}">${D.st.hunt_live ? 'Race is on' : 'Check-in only'}</span></div>
-        <p class="muted small" style="margin:0">${D.st.hunt_live ? 'Scanning a badge opens its question; a right answer gives 2 letters.' : 'Scanning a badge only checks the person in and puts them in the team on their badge. It turns live by itself when you move to the word race.'}</p>
-        <div class="row">${D.st.hunt_live ? '<button class="btn small" data-do="huntlive" data-v="0">Back to check-in only</button>' : '<button class="btn small primary" data-do="huntlive" data-v="1">Start the race now</button>'}</div></section>
+      <section class="card"><h2 style="font-size:18px">QR codes: what is open now</h2>
+        <p class="muted small" style="margin:0">Everything starts closed. Each group opens by itself when you reach its session with Next. You can also switch them here.</p>
+        <div class="list">${Object.entries(WR.GROUPS).map(([g, l]) => { const on = WR.isLive(D.st, g); return `<div class="li"><span class="badge ${on ? 'open' : ''}">${on ? 'Open' : 'Closed'}</span><span class="grow">${esc(l)}</span><button class="btn small ${on ? '' : 'primary'}" data-do="live" data-v="${g}">${on ? 'Close' : 'Open now'}</button></div>`; }).join('')}</div></section>
       ${(() => { const R = C.filter((c) => /^R\d/.test(c.code) && c.team_id); if (!R.length) return '';
         return `<section class="card"><h2 style="font-size:18px">Who gets which card (Day 1)</h2><p class="muted small" style="margin:0">One card per person, 2 letters each. Every team's 6 cards spell the whole word. Type each name, then print the person cards: the name is printed on the card.</p>
         <form data-form="holders" class="stack">${D.teams.map((t) => `<div class="stack" style="gap:6px"><strong class="${teamClass(t.id)}"><span class="team-dot"></span> ${esc(t.name)}</strong>${R.filter((c) => c.team_id === t.id).map((c) => `<div class="row"><code style="width:3em">${esc(c.code)}</code><strong style="width:3.2em;letter-spacing:.1em">${esc((D.secret[c.letter_index] || '') + (D.secret[c.letter_index2] || ''))}</strong><input name="h-${c.id}" value="${esc(c.holder || '')}" placeholder="Name" aria-label="Name for card ${esc(c.code)}" maxlength="60" style="flex:1 1 160px"></div>`).join('')}</div>`).join('')}
@@ -348,9 +348,9 @@
     try {
       switch (b.dataset.do) {
         case 'screen': await act('host_set_state', { p_patch: { screen: v } }); break;
-        case 'session': await act('host_set_state', { p_patch: { screen: 'session', session: v } }); break;
-        case 'sessionhunt': await act('host_set_state', { p_patch: Object.assign({ screen: 'hunt', session: v }, v === 'd1-race' ? { hunt_live: true } : {}) }); break;
-        case 'huntlive': await act('host_set_state', { p_patch: { hunt_live: v === '1' } }, v === '1' ? 'Badges are now live: scanning opens the question' : 'Badges are check-in only'); break;
+        case 'session': { const st = WR.flow.build(D.acts).find((x) => x.k === 'session' && x.s.key === v); await act('host_set_state', { p_patch: st ? WR.flow.patch(st) : { screen: 'session', session: v } }); break; }
+        case 'sessionhunt': { const st = WR.flow.build(D.acts).find((x) => x.k === 'hunt' && x.s.key === v); await act('host_set_state', { p_patch: st ? WR.flow.patch(st) : { screen: 'hunt', session: v } }); break; }
+        case 'live': { const cur = Array.isArray(D.st.live) ? D.st.live.slice() : []; const nx = cur.includes(v) ? cur.filter((x) => x !== v) : cur.concat(v); await act('host_set_state', { p_patch: { live: nx } }, (cur.includes(v) ? 'Closed: ' : 'Open: ') + WR.GROUPS[v]); paintTab(true); break; }
         case 'phase': await act('host_set_state', { p_patch: { phase: v } }); break;
         case 'show': await act('host_set_state', { p_patch: { activity_id: id, screen: 'activity', phase: 'open' } }); break;
         case 'showopen': await act('host_set_state', { p_patch: { activity_id: id, screen: 'activity', phase: 'open' } }, 'Answers are open'); break;

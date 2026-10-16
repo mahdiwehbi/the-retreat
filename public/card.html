@@ -30,7 +30,7 @@
       // A name badge joins its owner straight into the team printed on it.
       try {
         const [b] = await rows('hunt_cards', (q) => q.ilike('code', code));
-        if (b && b.holder && b.team_id) { me = await rpc('join_retreat', { p_name: b.holder, p_team: b.team_id }); WR.setMe(me); }
+        if (b && b.holder && b.team_id) { me = await rpc('badge_checkin', { p_code: b.code }); WR.setMe(me); }
       } catch (e) {}
     }
     if (!me) return WR.renderJoin(app, (m) => { me = m; load(); });
@@ -51,7 +51,12 @@
       [live] = await rows('state');
     } catch (e) { app.innerHTML = `<section class="card"><p class="notice bad">${esc(e.message)}</p></section>`; return; }
     if (!card) { app.innerHTML = `<section class="card"><h1 style="font-size:24px">Card not found</h1><p class="muted">The code ${esc(code)} is not part of this game. Check the code on the card.</p><a class="btn" href="/card">Type a code</a></section>`; return; }
-    if (card.letter_index != null && !(live && live.hunt_live)) return welcome();
+    if (card.grp && !WR.isLive(live, card.grp)) {
+      if (card.grp === 'badges') return welcome();
+      app.innerHTML = `<section class="card" style="text-align:center"><div class="eyebrow">Not open yet</div><div class="big-msg">${card.grp === 'rooms' ? 'Welcome!' : 'Patience…'}</div>
+        <p style="margin:0">${card.grp === 'rooms' ? 'Your room bonus opens at check-in. Scan it again then.' : card.grp === 'lake' ? 'This clue opens at the lake.' : 'This opens later in the retreat.'}</p><a class="btn primary block" href="/">Open the game</a></section>`;
+      return;
+    }
     render();
   }
 
@@ -61,9 +66,11 @@
     app.innerHTML = `<section class="card ${t}" style="text-align:center"><div class="eyebrow">WASH Coordination Team Retreat</div>
       <div class="big-msg">Welcome, ${esc(me.name.split(' ')[0])}!</div>
       <p style="margin:0">You are checked in${other ? '' : ` with <strong>${esc(teamName())}</strong>`}.</p>
-      ${other ? `<p class="notice bad" style="margin:0">This badge is ${esc(card.holder || 'someone else')}'s. Your phone is already in the game as ${esc(me.name)}.</p>` : ''}
+      ${other || (card.holder && me.name !== card.holder) ? `<p class="notice bad" style="margin:0">This badge is ${esc(card.holder || 'someone else')}'s. This phone is in the game as ${esc(me.name)}.</p><button class="btn block" data-act="iam">I am ${esc(card.holder)}: use my badge on this phone</button>` : ''}
       <p class="muted small" style="margin:0">Keep your badge with you all day.</p>
       <a class="btn primary block" href="/">Open the game</a></section>`;
+    const b = app.querySelector('[data-act="iam"]');
+    if (b) b.addEventListener('click', async () => { try { me = await rpc('badge_checkin', { p_code: card.code }); WR.setMe(me); load(); } catch (e) { toast(e.message, 4000); } });
   }
 
   function teamName() { const t = teams.find((x) => x.id === me.team_id); return t ? t.name : 'your team'; }

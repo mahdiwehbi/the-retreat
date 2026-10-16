@@ -3,5 +3,5 @@
 window.WR_CONFIG = {
   url: 'https://ljieehwfhasftbbjtivc.supabase.co',
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqaWVlaHdmaGFzZnRiYmp0aXZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNTk5NDUsImV4cCI6MjEwNzczNTk0NX0.bC59d-GGptzih5s6mSKTdwHF51x-G9_etYFLuaZdWzI',
-  eventName: 'WASH Coordination Team Retreat'
+  eventName: 'Where the Waters Meet · WASH Retreat'
 };

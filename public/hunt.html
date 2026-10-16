@@ -39,13 +39,13 @@
     if (!me) return WR.renderJoin(app, (m) => { me = m; go(); });
     go();
   }
-  let raceLive = false;
+  let raceLive = false, roomsLive = false, lakeLive = false;
   function go() { live(['hunt_cards', 'teams', 'team_points', 'state'], refresh, 5000); }
 
   async function refresh() {
     const [c, t, b] = await Promise.all([rows('hunt_cards', (q) => q.order('position').order('code')), rows('teams', (q) => q.order('id')), rpc('hunt_board')]);
     cards = c; teams = t; secretLen = b.length || 0; board = b;
-    try { const [s] = await rows('state'); raceLive = !!(s && s.hunt_live); } catch (e) {}
+    try { const [s] = await rows('state'); raceLive = WR.isLive(s, 'badges'); roomsLive = WR.isLive(s, 'rooms'); lakeLive = WR.isLive(s, 'lake'); } catch (e) {}
     try { solvedWord = await rpc('hunt_reveal', { p_pid: me.id, p_token: me.token }); } catch (e) {}
     try { mine = await rpc('hunt_my_team', { p_pid: me.id, p_token: me.token }); } catch (e) { if (/join again/i.test(e.message)) { WR.setMe(null); location.reload(); } }
     render();
@@ -66,7 +66,7 @@
         const tiles = groups.map((len) => { const g = Array.from({ length: len }, (_, k) => { const i = pos + k; const l = solvedWord ? solvedWord[i] : letters.get(i); return `<span class="${l ? 'on' : ''}">${l ? esc(l) : ''}</span>`; }).join(''); pos += len; return `<div class="tiles">${g}</div>`; }).join('');
         const won = board.winner; const mineSolved = (board.solved_teams || []).includes(me.team_id);
         const myRow = (board.teams || []).find((x) => x.team_id === me.team_id) || {}; const left = 5 - (myRow.guesses || 0);
-        return `<section class="card ${teamClass(me.team_id)}"><h1 style="font-size:26px">The secret word</h1>
+        return `<section class="card ${teamClass(me.team_id)}"><h1 style="font-size:26px">The message in the bottle</h1>
           <div class="stack" style="gap:8px;flex-direction:row;flex-wrap:wrap;column-gap:18px">${tiles}</div>
           <p class="muted small" style="margin:0">Your team has ${letters.size} of ${secretLen} letters. Each person on your team holds a card with 2 letters: get everyone's card right, or guess early.</p>
           ${won ? `<p class="notice ${won === me.team_id ? 'good' : ''}"><strong>${esc((teams.find((t) => t.id === won) || {}).name || '')}</strong> cracked it first!</p>` : ''}
@@ -78,11 +78,11 @@
         const roomsHtml = rooms.length && raceLive ? `<section class="card"><strong>Day 1 · Your team's cards</strong><p class="small" style="margin:0">Everyone has a card with their name on it. Scan it and answer: its 2 letters go to your team. You can retry until you get it right.</p>
           <div class="tiles">${rooms.map((c) => { const m = byId.get(c.id) || {}; return `<span class="${m.solved ? 'on' : ''}" title="${esc(c.code)}" style="${!m.solved && m.wrong >= 3 ? 'opacity:.4' : ''}">${m.solved ? esc((m.letter || '') + (m.letter2 || '') || '✓') : esc(c.holder || '·')}</span>`; }).join('')}</div>
           <span class="how">${rooms.filter((c) => (byId.get(c.id) || {}).solved).length} of ${rooms.length} cards done</span></section>` : '';
-        const lakeHtml = lake.length ? `<section class="card"><strong>Day 2 · WAP at the lake</strong><p class="small" style="margin:0">Your team leader holds the WAP deck: cards that describe latrines, water sources and wastewater disposal without naming them. For each clue, pick the right card and scan it. A wrong scan uses one of your 3 tries. Field tasks need a photo.</p></section>
+        const lakeHtml = lake.length && lakeLive ? `<section class="card"><strong>Day 2 · The Expedition (WAP deck)</strong><p class="small" style="margin:0">Your team leader holds the WAP deck: cards that describe latrines, water sources and wastewater disposal without naming them. For each clue, pick the right card and scan it. A wrong scan uses one of your 3 tries. Field tasks need a photo.</p></section>
           <div class="stack">${lake.map((c, i) => { const m = byId.get(c.id) || {}; const done = m.solved; const locked = !done && m.wrong >= 3;
             const inner = `<span class="st">${done ? '✓' : i + 1}</span><span class="stack" style="gap:4px"><p><strong>${esc(c.prompt)}</strong></p><span class="how">${done ? 'Solved' : locked ? 'Locked: 3 tries used' : how[c.kind] || ''}${!done && !locked && m.wrong ? ` · ${3 - m.wrong} ${3 - m.wrong === 1 ? 'try' : 'tries'} left` : ''} · ${c.points} pt${c.points === 1 ? '' : 's'}</span></span>`;
             return c.kind === 'find' || done || locked ? `<div class="clue ${done ? 'done' : ''} ${c.golden ? 'gold' : ''}">${inner}</div>` : `<a class="clue ${c.golden ? 'gold' : ''}" href="/card?c=${encodeURIComponent(c.code)}">${inner}</a>`; }).join('')}</div>` : '';
-        const bedsHtml = beds.length ? `<section class="card"><strong>Room bonus cards</strong><p class="small" style="margin:0">Each room has a welcome card with a bonus question: 2 points for your team.</p>
+        const bedsHtml = beds.length && roomsLive ? `<section class="card"><strong>Safe Harbour · room bonus cards</strong><p class="small" style="margin:0">Each room has a welcome card with a bonus question: 2 points for your team.</p>
           <div class="stack">${beds.map((c) => { const m = byId.get(c.id) || {}; const done = m.solved; const locked = !done && m.wrong >= 3;
             const inner = `<span class="st">${done ? '✓' : '·'}</span><span class="stack" style="gap:4px"><p><strong>${esc(c.holder)}'s room</strong></p><span class="how">${done ? 'Solved' : locked ? 'Locked: 3 tries used' : 'Scan the card on the bed'}</span></span>`;
             return `<div class="clue ${done ? 'done' : ''}">${inner}</div>`; }).join('')}</div></section>` : '';
