@@ -148,5 +148,60 @@
     el.innerHTML = `<section class="card"><h1 style="font-size:26px">Setup needed</h1><p>Add the Supabase project URL and anon key in <code>config.js</code>, then reload this page.</p></section>`;
   }
 
-  window.WR = { cfg, configured, sb, $, esc, LETTERS, teamClass, getMe, setMe, rpc, rows, live, syncClock, now, toast, uploadPhoto, checkMe, renderJoin, setupNotice, friendly };
+  // The presentation: one ordered list of steps, like slides. Arrow keys move along it.
+  // Join screen → each question (a quiz adds "reveal" and "top players") → team scores → podium.
+  const flow = {
+    build(acts) {
+      const s = [{ k: 'lobby' }];
+      acts.forEach((a) => {
+        s.push({ k: 'q', a });
+        if (a.kind === 'quiz') { s.push({ k: 'reveal', a }); s.push({ k: 'lb', a }); }
+      });
+      s.push({ k: 'teams' });
+      [1, 2, 3].forEach((n) => s.push({ k: 'podium', n }));
+      return s;
+    },
+    indexOf(steps, st) {
+      if (!st) return 0;
+      const i = steps.findIndex((x) => {
+        if (x.k === 'lobby') return st.screen === 'lobby';
+        if (x.k === 'q') return st.screen === 'activity' && st.activity_id === x.a.id && st.phase !== 'reveal';
+        if (x.k === 'reveal') return st.screen === 'activity' && st.activity_id === x.a.id && st.phase === 'reveal';
+        if (x.k === 'lb') return st.screen === 'leaderboard' && st.activity_id === x.a.id;
+        if (x.k === 'teams') return st.screen === 'teams';
+        if (x.k === 'podium') return st.screen === 'podium' && Math.max(1, st.podium_step || 0) === x.n;
+        return false;
+      });
+      if (i >= 0) return i;
+      if (st.screen === 'leaderboard' || st.screen === 'hunt') {
+        const j = steps.findIndex((x) => x.a && x.a.id === st.activity_id);
+        return j >= 0 ? j : 0;
+      }
+      return 0;
+    },
+    patch(x) {
+      if (x.k === 'lobby') return { screen: 'lobby' };
+      if (x.k === 'q') return { activity_id: x.a.id, screen: 'activity', phase: 'open' };
+      if (x.k === 'reveal') return { activity_id: x.a.id, screen: 'activity', phase: 'reveal' };
+      if (x.k === 'lb') return { screen: 'leaderboard' };
+      if (x.k === 'teams') return { screen: 'teams' };
+      return { screen: 'podium', podium_step: x.n };
+    },
+    label(x) {
+      if (!x) return 'End';
+      if (x.k === 'lobby') return 'Join screen';
+      if (x.k === 'q') return '#' + x.a.position + ' ' + x.a.title;
+      if (x.k === 'reveal') return 'Reveal the answer';
+      if (x.k === 'lb') return 'Top players';
+      if (x.k === 'teams') return 'Team scores';
+      return ['', 'Podium: 3rd place', 'Podium: 2nd place', 'Podium: the winner'][x.n];
+    }
+  };
+  // Going back from a reveal must not reopen the quiz: show the question closed instead.
+  flow.patchBack = (x) => (x.k === 'q' && x.a.kind === 'quiz' ? { activity_id: x.a.id, screen: 'activity', phase: 'closed' } : flow.patch(x));
+
+  function getPin() { try { return localStorage.getItem('wr-pin') || ''; } catch (e) { return ''; } }
+  function setPin(v) { try { v ? localStorage.setItem('wr-pin', v) : localStorage.removeItem('wr-pin'); } catch (e) {} }
+
+  window.WR = { flow, getPin, setPin, cfg, configured, sb, $, esc, LETTERS, teamClass, getMe, setMe, rpc, rows, live, syncClock, now, toast, uploadPhoto, checkMe, renderJoin, setupNotice, friendly };
 })();

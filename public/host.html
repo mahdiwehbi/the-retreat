@@ -52,7 +52,7 @@
 
   const KINDS = { poll: 'Vote', quiz: 'Quiz', words: 'Word cloud', rating: 'Rating 1–5', open: 'Open text' };
   const SCREENS = [['lobby', 'Join screen'], ['activity', 'Question'], ['leaderboard', 'Top players'], ['teams', 'Team scores'], ['hunt', 'Hunt'], ['podium', 'Podium']];
-  let pin = ''; try { pin = sessionStorage.getItem('wr-pin') || ''; } catch (e) {}
+  let pin = WR.getPin();
   let tab = 'run'; try { tab = sessionStorage.getItem('wr-tab') || 'run'; } catch (e) {}
   const D = { st: {}, teams: [], players: [], acts: [], keys: {}, resp: [], points: [], board: [], cards: null, secret: '', finds: [], checks: [] };
 
@@ -63,14 +63,14 @@
       ${msg ? `<p class="notice bad">${esc(msg)}</p>` : ''}<button class="btn primary block">Open the host panel</button></form></section>`;
     $('#lf').addEventListener('submit', async (e) => {
       e.preventDefault(); const p = $('#pin').value;
-      try { if (await rpc('host_check', { p_pin: p })) { pin = p; try { sessionStorage.setItem('wr-pin', p); } catch (x) {} boot(); } else login('That passphrase is not right.'); }
+      try { if (await rpc('host_check', { p_pin: p })) { pin = p; WR.setPin(p); boot(); } else login('That passphrase is not right.'); }
       catch (x) { login(x.message); }
     });
   }
   const H = (fn, args) => rpc(fn, Object.assign({ p_pin: pin }, args || {}));
   async function act(fn, args, okMsg) {
     try { const r = await H(fn, args); if (okMsg) toast(okMsg); return r; }
-    catch (e) { if (/passphrase/i.test(e.message)) { try { sessionStorage.removeItem('wr-pin'); } catch (x) {} login(e.message); } else toast(e.message, 4000); throw e; }
+    catch (e) { if (/passphrase/i.test(e.message)) { WR.setPin(''); login(e.message); } else toast(e.message, 4000); throw e; }
   }
 
   /* ---------- data ---------- */
@@ -132,8 +132,13 @@
         </div>`;
     }
     const podium = st.screen === 'podium' ? `<section class="card"><h2 style="font-size:18px">Podium</h2><div class="row"><button class="btn primary" data-do="podium" data-v="${Math.min(3, (st.podium_step || 0) + 1)}" ${(st.podium_step || 0) >= 3 ? 'disabled' : ''}>${['Reveal 3rd place', 'Reveal 2nd place', 'Reveal the winner', 'All revealed'][st.podium_step || 0]}</button><button class="btn" data-do="podium" data-v="0">Start over</button></div></section>` : '';
+    const steps = WR.flow.build(D.acts); const si = WR.flow.indexOf(steps, st);
+    const presenter = `<section class="card" style="border-color:var(--accent)"><div class="spread"><h2 style="font-size:18px">Present</h2><span class="small muted">Step ${si + 1} of ${steps.length}</span></div>
+      <div class="small muted">Now: <strong style="color:var(--ink)">${esc(WR.flow.label(steps[si]))}</strong></div>
+      <div class="row"><button class="btn" data-do="prev" ${si <= 0 ? 'disabled' : ''}>◀ Back</button><button class="btn primary" data-do="next" style="flex:1 1 200px" ${si >= steps.length - 1 ? 'disabled' : ''}>Next ▶ ${esc(WR.flow.label(steps[si + 1]).slice(0, 48))}</button></div>
+      <p class="muted small" style="margin:0">Or press the ← → arrow keys here or on the projector screen. Each question opens by itself; a quiz then reveals the answer and shows the top players.</p></section>`;
     return `<div class="grid2">
-      <div class="stack">
+      <div class="stack">${presenter}
         <section class="card"><h2 style="font-size:18px">The screen shows</h2><div class="seg">${SCREENS.map(([k, l]) => `<button data-do="screen" data-v="${k}" aria-pressed="${st.screen === k}">${l}</button>`).join('')}</div></section>
         <section class="card"><h2 style="font-size:18px">Now</h2>${ctl}</section>${podium}
         <section class="card"><h2 style="font-size:18px">Team scores</h2>${(D.board || []).map((t) => `<div class="pts-row ${teamClass(t.team_id)}"><span class="row"><span class="team-dot"></span><strong>${esc(t.name)}</strong></span><span class="timer">${t.manual + t.hunt + t.quiz}</span></div>`).join('')}</section>
@@ -255,6 +260,17 @@
       <div class="list">${items.map(([k, l, d]) => `<div class="li"><span class="grow"><strong>${l}</strong><br><span class="small muted">${d}</span></span><button class="btn small danger" data-do="reset" data-v="${k}">${l}</button></div>`).join('')}</div></section>`;
   }
 
+  async function move(dir) {
+    const steps = WR.flow.build(D.acts); const i = WR.flow.indexOf(steps, D.st); const j = i + dir;
+    if (j < 0 || j >= steps.length) return;
+    await act('host_set_state', { p_patch: dir > 0 ? WR.flow.patch(steps[j]) : WR.flow.patchBack(steps[j]) });
+  }
+  document.addEventListener('keydown', async (e) => {
+    if (!pin || tab !== 'run' || /INPUT|TEXTAREA|SELECT/.test((e.target.tagName || ''))) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); try { await move(1); await refresh(); } catch (x) {} }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); try { await move(-1); await refresh(); } catch (x) {} }
+  });
+
   /* ---------- events ---------- */
   app.addEventListener('click', async (e) => {
     const t = e.target.closest('[data-tab]');
@@ -273,6 +289,8 @@
         case 'showopen': await act('host_set_state', { p_patch: { activity_id: id, screen: 'activity', phase: 'open' } }, 'Answers are open'); break;
         case 'clear': await act('host_clear_responses', { p_activity: id }, 'Answers cleared'); break;
         case 'podium': await act('host_set_state', { p_patch: { podium_step: Number(v) } }); break;
+        case 'next': await move(1); break;
+        case 'prev': await move(-1); break;
         case 'addact': {
           const defaults = { poll: ['Option 1', 'Option 2'], quiz: ['Answer A', 'Answer B', 'Answer C', 'Answer D'], rating: ['Low', 'High'], words: [], open: [] };
           const nid = await act('host_save_activity', { p_id: null, p_data: { kind: v, title: 'New ' + KINDS[v].toLowerCase(), options: defaults[v], correct: v === 'quiz' ? 0 : null, max_words: v === 'words' ? 1 : 3 } }, 'Added');

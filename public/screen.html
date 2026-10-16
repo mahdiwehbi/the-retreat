@@ -224,6 +224,25 @@
     el.classList.toggle('low', left <= 5);
   }
 
+  // Presenter keys: on a laptop where the host has signed in, arrows move through the steps.
+  const hint = document.createElement('div');
+  hint.style.cssText = 'position:fixed;right:calc(10px + env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));font-size:12px;color:var(--muted);opacity:.6';
+  if (WR.getPin()) { hint.textContent = '← → to move'; document.body.appendChild(hint); }
+  let moving = false;
+  async function move(dir) {
+    const pin = WR.getPin(); if (!pin || moving) return;
+    moving = true;
+    try {
+      const steps = WR.flow.build(D.acts); const i = WR.flow.indexOf(steps, D.st); const j = i + dir;
+      if (j >= 0 && j < steps.length) { await rpc('host_set_state', { p_pin: pin, p_patch: dir > 0 ? WR.flow.patch(steps[j]) : WR.flow.patchBack(steps[j]) }); await refresh(); }
+    } catch (e) { hint.textContent = /passphrase/i.test(e.message) ? 'Sign in on /host first' : e.message; }
+    moving = false;
+  }
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); move(1); }
+    if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); move(-1); }
+  });
+
   syncClock();
   setInterval(tick, 250);
   setTimeout(() => live(['state', 'responses', 'participants', 'activities', 'teams', 'team_points'], refresh, 4000), 300);
