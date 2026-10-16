@@ -109,7 +109,12 @@
   }
 
   // Renders the join form into `el`; calls onJoined(me) when done.
-  async function renderJoin(el, onJoined) {
+  // No join form: people join only by scanning their name badge (card.html checks them in).
+  async function renderJoin(el) {
+    try { const [st] = await rows('state'); if (isLive(st, 'closed')) { thanks(el); return; } } catch (e) {}
+    el.innerHTML = `<section class="card" style="text-align:center;margin-top:12vh"><div class="eyebrow">${esc(cfg.eventName || 'WASH Retreat')}</div><div class="big-msg">Scan your badge</div><p style="margin:0">To join, scan the QR code on your name badge with your phone camera.</p><p class="muted small" style="margin:0">No badge? Ask the facilitator.</p></section>`;
+  }
+  async function renderJoinForm(el, onJoined) {
     let teams = [];
     try { teams = await rows('teams', (q) => q.order('id')); } catch (e) {}
     let pick = null;
