@@ -130,6 +130,11 @@
       <div class="teamcols">${byTeam.map(({ t, ps }) => `<div class="teamcol ${teamClass(t.id)}"><h3><span>${esc(t.name)}</span><span class="timer">${ps.length}</span></h3><div class="names">${ps.map((p) => `<span>${esc(p.name)}</span>`).join('')}</div></div>`).join('')}</div>`;
   }
 
+  function joinedBlock(msg) {
+    return `<div class="stack" style="gap:.8em;margin-block:auto"><div class="spread"><b style="font-family:var(--display);font-size:1.6em">${esc(msg)}</b><span class="timer" style="font-size:1.6em">${D.players.length} joined</span></div>
+      <div class="teamcols">${D.teams.map((t) => { const ps = D.players.filter((p) => p.team_id === t.id); return `<div class="teamcol ${teamClass(t.id)}"><h3><span>${esc(t.name)}</span><span class="timer">${ps.length}</span></h3><div class="names">${ps.map((p) => `<span>${esc(p.name)}</span>`).join('')}</div></div>`; }).join('')}</div></div>`;
+  }
+
   function bars(items, max, cls) {
     return `<div class="bars">${items.map((it, i) => `<div class="bar ${it.cls || cls || ''}"><div class="lab">${it.k ? `<span class="k">${esc(it.k)}</span>` : '<span class="team-dot"></span>'}<span>${esc(it.label)}</span></div>
       <div class="track"><div class="fill" style="width:${Math.max(1.5, (it.n / Math.max(1, max)) * 100)}%"></div></div><div class="num">${it.n}</div></div>`).join('')}</div>`;
@@ -144,7 +149,7 @@
     const head = `<div class="top"><div class="stack" style="gap:.3em;min-width:0"><div class="kick">${({ poll: 'Vote on your phone', quiz: 'Quiz', words: 'Word cloud', rating: 'Rating', open: 'Open question' })[a.kind]}</div><h1 class="ttl">${esc(a.title)}</h1></div>
       <div class="stack" style="align-items:flex-end;gap:.2em">${a.kind === 'quiz' && st.phase === 'open' ? `<span class="big-timer" data-timer></span><span class="muted">${count} answered</span>` : `<span class="muted">${status}</span>`}</div></div>`;
 
-    if (st.phase === 'idle') return head + `<div class="empty"><b>Phones ready?</b>Answers open in a moment.</div>`;
+    if (st.phase === 'idle') return head + joinedBlock('Phones ready? Answers open in a moment.');
 
     if (a.kind === 'poll' || a.kind === 'quiz') {
       const counts = a.options.map((_, i) => R.filter((r) => r.value.choice === i).length);
@@ -227,7 +232,7 @@
   // Presenter keys: on a laptop where the host has signed in, arrows move through the steps.
   const hint = document.createElement('div');
   hint.style.cssText = 'position:fixed;right:calc(10px + env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));font-size:12px;color:var(--muted);opacity:.6';
-  if (WR.getPin()) { hint.textContent = '← → to move'; document.body.appendChild(hint); }
+  hint.textContent = WR.getPin() ? '← → to move' : 'To move with the arrow keys, sign in at /host on this laptop'; document.body.appendChild(hint);
   let moving = false;
   async function move(dir) {
     const pin = WR.getPin(); if (!pin || moving) return;

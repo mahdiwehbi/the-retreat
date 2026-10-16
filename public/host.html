@@ -53,6 +53,7 @@
   const KINDS = { poll: 'Vote', quiz: 'Quiz', words: 'Word cloud', rating: 'Rating 1–5', open: 'Open text' };
   const SCREENS = [['lobby', 'Join screen'], ['activity', 'Question'], ['leaderboard', 'Top players'], ['teams', 'Team scores'], ['hunt', 'Hunt'], ['podium', 'Podium']];
   let pin = WR.getPin();
+  try { const old = sessionStorage.getItem('wr-pin'); if (!pin && old) { pin = old; WR.setPin(old); } } catch (e) {}
   let tab = 'run'; try { tab = sessionStorage.getItem('wr-tab') || 'run'; } catch (e) {}
   const D = { st: {}, teams: [], players: [], acts: [], keys: {}, resp: [], points: [], board: [], cards: null, secret: '', finds: [], checks: [] };
 
@@ -285,7 +286,7 @@
       switch (b.dataset.do) {
         case 'screen': await act('host_set_state', { p_patch: { screen: v } }); break;
         case 'phase': await act('host_set_state', { p_patch: { phase: v } }); break;
-        case 'show': await act('host_set_state', { p_patch: { activity_id: id, screen: 'activity' } }); break;
+        case 'show': await act('host_set_state', { p_patch: { activity_id: id, screen: 'activity', phase: 'open' } }); break;
         case 'showopen': await act('host_set_state', { p_patch: { activity_id: id, screen: 'activity', phase: 'open' } }, 'Answers are open'); break;
         case 'clear': await act('host_clear_responses', { p_activity: id }, 'Answers cleared'); break;
         case 'podium': await act('host_set_state', { p_patch: { podium_step: Number(v) } }); break;
