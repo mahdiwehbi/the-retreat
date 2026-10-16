@@ -50,6 +50,10 @@
 
   function render(resultHtml) {
     const k = card.kind;
+    if (k === 'find') {
+      app.innerHTML = `<section class="card"><div class="eyebrow">WAP explorer</div><h1 style="font-size:24px">${esc(card.prompt)}</h1><p class="muted" style="margin:0">Find the card that matches around the lake and scan it. Its page lets you send it as your answer.</p><a class="btn primary block" href="/hunt">See all clues</a></section>`;
+      return;
+    }
     let form = '';
     if (k === 'quiz') {
       form = `<div class="answers">${(card.options || []).map((o, i) => `<button type="button" class="ans" data-pick="${i}" aria-pressed="${pick === i}"><span class="k">${LETTERS[i]}</span><span>${esc(o)}</span></button>`).join('')}</div>`;
@@ -70,7 +74,7 @@
         <form id="cf" class="stack">${form}<button class="btn primary block" type="submit">Submit for ${esc(teamName())}</button></form>
         <p class="muted small" style="margin:0">Your team has 3 tries per card. One correct answer counts for the whole team.</p>
       </section>
-      <nav class="foot-links"><a href="/">Back to the game</a><a href="/card">Type another code</a></nav>`;
+      <nav class="foot-links"><a href="/hunt">All clues</a><a href="/">Back to the game</a><a href="/card">Type another code</a></nav>`;
     if (photoFile) { const r = new FileReader(); r.onload = () => { const p = $('#prev'); if (p) { p.src = r.result; p.hidden = false; } }; r.readAsDataURL(photoFile); }
   }
 
@@ -84,7 +88,7 @@
         <div class="big-msg">${res.status === 'correct' ? 'Well done!' : 'Already found'}</div>
         <p class="muted" style="margin:0">${res.status === 'correct' ? `${esc(teamName())} gets ${res.points || 1} point${(res.points || 1) === 1 ? '' : 's'}.` : `${esc(teamName())} already solved this card.`}</p>
         ${letter}
-        <a class="btn primary block" href="/">Back to the game</a></section>`;
+        <a class="btn primary block" href="/hunt">See your letters</a></section>`;
       return;
     }
     if (res.status === 'locked') {

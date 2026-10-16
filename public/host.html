@@ -44,13 +44,18 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/config.js"></script>
 <script src="/lib.js"></script>
+<script src="/sap.js"></script>
 <script>
 (function () {
   const { $, esc, LETTERS, teamClass, rpc, rows, live, toast } = WR;
   const app = $('#app');
   if (!WR.configured) { WR.setupNotice(app); return; }
 
-  const KINDS = { poll: 'Vote', quiz: 'Quiz', words: 'Word cloud', rating: 'Rating 1–5', open: 'Open text' };
+  const KINDS = { poll: 'Vote', quiz: 'Quiz', words: 'Word cloud', rating: 'Rating 1–5', open: 'Open text', board: 'Sticky-note wall', dots: 'Dot vote', team: 'Team worksheet', allocate: 'Share points' };
+  const isArr = (o) => Array.isArray(o);
+  const fieldsToText = (fs) => (fs || []).map((f) => [f.label, f.type || 'list', (f.tags || []).join(', ')].filter((x, i) => i < 2 || x).join(' | ')).join('\n');
+  const textToFields = (t) => String(t || '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => { const [label, type, tags] = l.split('|').map((x) => (x || '').trim()); const f = { label, type: type === 'text' ? 'text' : 'list' }; if (tags) f.tags = tags.split(',').map((x) => x.trim()).filter(Boolean); return f; });
+  const lines = (t) => String(t || '').split('\n').map((x) => x.trim()).filter(Boolean);
   const SCREENS = [['lobby', 'Join screen'], ['activity', 'Question'], ['leaderboard', 'Top players'], ['teams', 'Team scores'], ['hunt', 'Hunt'], ['podium', 'Podium']];
   let pin = WR.getPin();
   try { const old = sessionStorage.getItem('wr-pin'); if (!pin && old) { pin = old; WR.setPin(old); } } catch (e) {}
@@ -98,7 +103,7 @@
   }
   function paintHeader() { const h = $('#hdr'); if (h) h.textContent = `${D.players.length} players joined`; }
   function paintTabs() {
-    const T = [['run', 'Run'], ['questions', 'Questions'], ['teams', 'Teams & points'], ['hunt', 'Treasure hunt'], ['checks', 'Site checks'], ['reset', 'Reset']];
+    const T = [['run', 'Run'], ['questions', 'Questions'], ['teams', 'Teams & points'], ['hunt', 'Treasure hunt'], ['sap', 'Site test (SAP)'], ['reset', 'Reset']];
     $('#tabs').innerHTML = T.map(([k, l]) => `<button data-tab="${k}" aria-current="${k === tab}">${l}</button>`).join('');
   }
   function typing() { const a = document.activeElement; return a && $('#tab') && $('#tab').contains(a) && /INPUT|TEXTAREA|SELECT/.test(a.tagName); }
@@ -106,10 +111,11 @@
     const el = $('#tab'); if (!el) return;
     if (!force && typing()) return;
     if (tab === 'questions' && force) await loadKeys().catch(() => {});
-    if (tab === 'hunt' && (force || !D.cards)) { await loadCards().catch(() => {}); try { D.finds = await H('host_finds'); } catch (e) {} }
+    if (tab === 'hunt' && (force || !D.cards)) { await loadCards().catch(() => {}); try { D.finds = await H('host_finds'); D.spots = await rows('hunt_spots', (q) => q.order('position')); } catch (e) {} }
+    if (tab === 'sap' && force) { try { D.sapAcc = await H('host_sap_accuracy'); D.sap = await Promise.all(D.teams.map((t) => rpc('sap_summary', { p_team: t.id }))); } catch (e) {} }
     if (tab === 'checks' && force) { try { D.checks = await H('host_assessments'); } catch (e) {} }
     const y = window.scrollY;
-    el.innerHTML = ({ run: tRun, questions: tQuestions, teams: tTeams, hunt: tHunt, checks: tChecks, reset: tReset })[tab]();
+    el.innerHTML = ({ run: tRun, questions: tQuestions, teams: tTeams, hunt: tHunt, checks: tChecks, sap: tSap, reset: tReset })[tab]();
     if (!force) window.scrollTo(0, y);
   }
 
@@ -123,7 +129,7 @@
       const ph = st.phase;
       ctl = `<div class="spread"><div class="stack" style="gap:4px;min-width:0"><span class="small muted">${KINDS[a.kind]} · #${a.position}</span><strong style="font-size:18px;overflow-wrap:anywhere">${esc(a.title)}</strong></div>
         <span class="badge ${ph === 'open' ? 'open' : ''}">${({ idle: 'Not open yet', open: 'Answers open', closed: 'Closed', reveal: 'Answer shown' })[ph]}</span></div>
-        <div class="spread"><span><span class="kpi">${n}</span> <span class="muted">of ${D.players.length} answered</span></span>
+        <div class="spread"><span><span class="kpi">${n}</span> <span class="muted">${['board', 'dots', 'team'].includes(a.kind) ? 'see the screen for progress' : 'of ' + D.players.length + ' answered'}</span></span>
         ${a.kind === 'quiz' ? `<span class="small muted">Correct: ${D.keys[a.id] != null ? LETTERS[D.keys[a.id]] + '. ' + esc(a.options[D.keys[a.id]] || '') : 'not set'}</span>` : ''}</div>
         <div class="row">
           ${ph !== 'open' ? `<button class="btn primary" data-do="phase" data-v="open">${ph === 'idle' ? 'Open answers' : 'Open again'}</button>` : `<button class="btn" data-do="phase" data-v="closed">Close answers</button>`}
@@ -152,7 +158,7 @@
   /* ---------- Questions ---------- */
   function tQuestions() {
     const ed = (a) => {
-      const opts = (a.options || []).join('\n');
+      const opts = isArr(a.options) ? a.options.join('\n') : '';
       const corr = D.keys[a.id];
       return `<details class="ed" data-aid="${a.id}"><summary><span class="badge">${KINDS[a.kind]}</span>#${a.position} ${esc(a.title || 'Untitled')}</summary>
         <form class="ed-body" data-form="act" data-id="${a.id}">
@@ -160,8 +166,12 @@
           <label class="field" for="k-${a.id}">Type<select id="k-${a.id}" name="kind">${Object.entries(KINDS).map(([k, l]) => `<option value="${k}" ${k === a.kind ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
           <label class="field" for="p-${a.id}">Order<input id="p-${a.id}" name="position" type="number" value="${a.position}"></label>
           ${['poll', 'quiz'].includes(a.kind) ? `<label class="field full" for="o-${a.id}">Options, one per line (max 6)<textarea id="o-${a.id}" name="options" rows="4">${esc(opts)}</textarea></label>` : ''}
-          ${a.kind === 'rating' ? `<label class="field" for="lo-${a.id}">Label for 1<input id="lo-${a.id}" name="lo" value="${esc(a.options[0] || '')}"></label><label class="field" for="hi-${a.id}">Label for 5<input id="hi-${a.id}" name="hi" value="${esc(a.options[1] || '')}"></label>` : ''}
-          ${a.kind === 'quiz' ? `<label class="field" for="c-${a.id}">Correct answer<select id="c-${a.id}" name="correct">${(a.options || []).map((o, i) => `<option value="${i}" ${corr === i ? 'selected' : ''}>${LETTERS[i]}. ${esc(o)}</option>`).join('')}</select></label>
+          ${a.kind === 'board' ? `<label class="field full" for="bc-${a.id}">Columns, one per line<textarea id="bc-${a.id}" name="b_columns" rows="5">${esc(((a.options || {}).columns || []).join('\n'))}</textarea></label><label class="field full" for="bt-${a.id}">Note colours, one per line (max 5)<textarea id="bt-${a.id}" name="b_tags" rows="3">${esc(((a.options || {}).tags || []).join('\n'))}</textarea></label>` : ''}
+          ${a.kind === 'dots' ? `<label class="field" for="db-${a.id}">Votes on the wall<select id="db-${a.id}" name="d_board">${D.acts.filter((x) => x.kind === 'board').map((x) => `<option value="${x.id}" ${(a.options || {}).board === x.id ? 'selected' : ''}>#${x.position} ${esc(x.title)}</option>`).join('')}</select></label><label class="field" for="dn-${a.id}">Dots per person<input id="dn-${a.id}" name="d_dots" type="number" min="1" max="10" value="${(a.options || {}).dots || 3}"></label>` : ''}
+          ${a.kind === 'team' ? `<label class="field full" for="tf-${a.id}">Fields, one per line: Label | list or text | tags (optional, comma-separated)<textarea id="tf-${a.id}" name="t_fields" rows="5">${esc(fieldsToText((a.options || {}).fields))}</textarea></label><label class="field full" for="tp-${a.id}">Card for each team, one line per team in order (optional)<textarea id="tp-${a.id}" name="t_prompts" rows="3">${esc(((a.options || {}).prompts || []).join('\n'))}</textarea></label>` : ''}
+          ${a.kind === 'allocate' ? `<label class="field full" for="ai-${a.id}">What people give points to, one per line (empty = the teams)<textarea id="ai-${a.id}" name="a_items" rows="3">${esc(((a.options || {}).items || []).join('\n'))}</textarea></label><label class="field" for="ab-${a.id}">Points each person can give<input id="ab-${a.id}" name="a_budget" type="number" min="1" value="${(a.options || {}).budget || 100}"></label>` : ''}
+          ${a.kind === 'rating' ? `<label class="field" for="lo-${a.id}">Label for 1<input id="lo-${a.id}" name="lo" value="${esc((isArr(a.options) && a.options[0]) || '')}"></label><label class="field" for="hi-${a.id}">Label for 5<input id="hi-${a.id}" name="hi" value="${esc((isArr(a.options) && a.options[1]) || '')}"></label>` : ''}
+          ${a.kind === 'quiz' ? `<label class="field" for="c-${a.id}">Correct answer<select id="c-${a.id}" name="correct">${(isArr(a.options) ? a.options : []).map((o, i) => `<option value="${i}" ${corr === i ? 'selected' : ''}>${LETTERS[i]}. ${esc(o)}</option>`).join('')}</select></label>
             <label class="field" for="tl-${a.id}">Seconds to answer<input id="tl-${a.id}" name="time_limit" type="number" min="5" max="300" value="${a.time_limit}"></label>` : ''}
           ${a.kind === 'words' ? `<label class="field" for="mw-${a.id}">Words per person<input id="mw-${a.id}" name="max_words" type="number" min="1" max="5" value="${a.max_words}"></label>` : ''}
           <div class="row full"><button class="btn primary" type="submit">Save</button><button class="btn danger" type="button" data-do="delact" data-id="${a.id}">Delete</button></div>
@@ -180,8 +190,18 @@
     if (f.has('correct')) data.correct = Number(f.get('correct'));
     if (f.has('time_limit')) data.time_limit = Math.max(5, Number(f.get('time_limit')) || 20);
     if (f.has('max_words')) data.max_words = Math.min(5, Math.max(1, Number(f.get('max_words')) || 1));
+    if (f.has('b_columns')) data.options = { columns: lines(f.get('b_columns')), tags: lines(f.get('b_tags')).slice(0, 5) };
+    if (f.has('d_board')) data.options = { board: f.get('d_board'), dots: Math.max(1, Number(f.get('d_dots')) || 3) };
+    if (f.has('t_fields')) data.options = { fields: textToFields(f.get('t_fields')), prompts: lines(f.get('t_prompts')) };
+    if (f.has('a_items')) data.options = { items: lines(f.get('a_items')), budget: Math.max(1, Number(f.get('a_budget')) || 100) };
+    if (kind !== a.kind) {
+      const dflt = { poll: ['Option 1', 'Option 2'], quiz: ['Answer A', 'Answer B', 'Answer C', 'Answer D'], rating: ['Low', 'High'], words: [], open: [],
+        board: { columns: ['Column 1', 'Column 2'], tags: ['Worked', 'Broke down', 'Surprise'] }, dots: { board: (D.acts.find((x) => x.kind === 'board') || {}).id || '', dots: 3 },
+        team: { fields: [{ label: 'Our answer', type: 'list' }] }, allocate: { items: [], budget: 100 } };
+      data.options = dflt[kind];
+    }
     if (['poll', 'quiz'].includes(kind) && !['poll', 'quiz'].includes(a.kind) && !data.options) data.options = ['Option 1', 'Option 2'];
-    if (['poll', 'quiz'].includes(kind) && (data.options || a.options).length < 2) { toast('Add at least 2 options.'); return; }
+    if (['poll', 'quiz'].includes(kind) && ((data.options || a.options) || []).length < 2) { toast('Add at least 2 options.'); return; }
     if (kind === 'rating' && !f.has('lo') && a.kind !== 'rating') data.options = ['Low', 'High'];
     if (kind === 'quiz' && data.correct == null && D.keys[id] == null) data.correct = 0;
     await act('host_save_activity', { p_id: id, p_data: data }, 'Saved');
@@ -210,13 +230,14 @@
   /* ---------- Hunt ---------- */
   function tHunt() {
     const C = D.cards || [];
-    const ed = (c) => `<details class="ed" data-cid="${c.id}"><summary>${c.golden ? '<span class="badge" style="color:var(--gold)">Golden</span>' : ''}<span class="badge">${({ text: 'Answer', quiz: 'Multiple choice', photo: 'Photo task' })[c.kind]}</span><code>${esc(c.code)}</code> ${esc((c.prompt || '').slice(0, 70))}${c.letter_index != null && D.secret[c.letter_index] ? ` · letter <strong>${esc(D.secret[c.letter_index])}</strong>` : ''}</summary>
+    const ed = (c) => `<details class="ed" data-cid="${c.id}"><summary>${c.golden ? '<span class="badge" style="color:var(--gold)">Golden</span>' : ''}<span class="badge">${({ text: 'Answer', quiz: 'Multiple choice', photo: 'Photo task', find: 'Find the card' })[c.kind]}</span><code>${esc(c.code)}</code> ${esc((c.prompt || '').slice(0, 70))}${c.letter_index != null && D.secret[c.letter_index] ? ` · letter <strong>${esc(D.secret[c.letter_index])}</strong>` : ''}</summary>
       <form class="ed-body" data-form="card" data-id="${c.id}">
         <label class="field full" for="cp-${c.id}">Question or task<textarea id="cp-${c.id}" name="prompt" rows="3">${esc(c.prompt)}</textarea></label>
-        <label class="field" for="ck-${c.id}">Type<select id="ck-${c.id}" name="kind"><option value="text" ${c.kind === 'text' ? 'selected' : ''}>Typed answer</option><option value="quiz" ${c.kind === 'quiz' ? 'selected' : ''}>Multiple choice</option><option value="photo" ${c.kind === 'photo' ? 'selected' : ''}>Photo task</option></select></label>
+        <label class="field" for="ck-${c.id}">Type<select id="ck-${c.id}" name="kind"><option value="text" ${c.kind === 'text' ? 'selected' : ''}>Typed answer</option><option value="quiz" ${c.kind === 'quiz' ? 'selected' : ''}>Multiple choice</option><option value="photo" ${c.kind === 'photo' ? 'selected' : ''}>Photo task</option><option value="find" ${c.kind === 'find' ? 'selected' : ''}>Find the right WAP card</option></select></label>
         <label class="field" for="cc-${c.id}">Code on the card<input id="cc-${c.id}" name="code" value="${esc(c.code)}" maxlength="10"></label>
         ${c.kind === 'quiz' ? `<label class="field full" for="co-${c.id}">Options, one per line<textarea id="co-${c.id}" name="options" rows="4">${esc((c.options || []).join('\n'))}</textarea></label>
           <label class="field" for="ca-${c.id}">Correct option<select id="ca-${c.id}" name="answer">${(c.options || []).map((o, i) => `<option value="${i}" ${String(i) === c.answer ? 'selected' : ''}>${LETTERS[i]}. ${esc(o)}</option>`).join('')}</select></label>`
+          : c.kind === 'find' ? `<label class="field full" for="ca-${c.id}">Right card codes, separated by | (see the WAP cards list below)<input id="ca-${c.id}" name="answer" value="${esc(c.answer)}" placeholder="A5"></label>`
           : c.kind === 'text' ? `<label class="field full" for="ca-${c.id}">Accepted answers, separated by | (empty = any answer)<input id="ca-${c.id}" name="answer" value="${esc(c.answer)}" placeholder="Litani|Litani river"></label>` : '<p class="muted small full" style="margin:0">Any photo completes this card. Check the photos below.</p>'}
         <label class="field" for="cl-${c.id}">Letter number in the secret word (empty = none)<input id="cl-${c.id}" name="letter" type="number" min="1" value="${c.letter_index != null ? c.letter_index + 1 : ''}"></label>
         <label class="field" for="cpt-${c.id}">Points<input id="cpt-${c.id}" name="points" type="number" min="0" value="${c.points}"></label>
@@ -228,6 +249,8 @@
         <p class="muted small" style="margin:0">${D.secret.length} letters. Give each letter to one card below. Only you see this.</p></section>
       <section class="card"><div class="spread"><h2 style="font-size:18px">Cards (${C.length})</h2><div class="row"><button class="btn small" data-do="addcard">+ Add card</button><a class="btn small primary" href="/print" target="_blank" rel="noopener">Print cards with QR codes</a></div></div></section>
       ${C.map(ed).join('')}
+      <section class="card"><h2 style="font-size:18px">WAP cards for the lake (${(D.spots || []).length})</h2><p class="muted small" style="margin:0">Printed with their QR codes. A "find" clue is solved by scanning one of its right cards.</p>
+        <div class="tablewrap"><table><tbody>${(D.spots || []).map((sp) => `<tr><td><code>${esc(sp.code)}</code></td><td>${esc(sp.grp)}</td><td>${esc(sp.description)}</td></tr>`).join('')}</tbody></table></div></section>
       <section class="card"><div class="spread"><h2 style="font-size:18px">Answers and photos sent</h2><button class="btn small" data-do="reloadfinds">Refresh</button></div>
         <div class="list">${(D.finds || []).map((f) => `<div class="li"><span class="badge" style="${f.correct ? 'background:var(--good);color:var(--surface)' : ''}">${f.correct ? 'Correct' : 'Wrong'}</span><span class="grow"><code>${esc(f.code)}</code> · ${esc((D.teams.find((t) => t.id === f.team_id) || {}).name || '')} · ${esc(f.player || '')}${f.answer ? ' · “' + esc(f.answer) + '”' : ''}</span>${f.photo ? `<span class="thumbs"><a href="${esc(f.photo)}" target="_blank" rel="noopener"><img src="${esc(f.photo)}" alt="Hunt photo"></a></span>` : ''}</div>`).join('') || '<p class="muted">Nothing yet.</p>'}</div></section>
     </div>`;
@@ -254,9 +277,24 @@
         ${(c.photos || []).length ? `<div class="thumbs">${c.photos.map((p) => `<a href="${esc(p.url)}" target="_blank" rel="noopener" title="${esc(p.label)}"><img src="${esc(p.url)}" alt="${esc(p.label)}"></a>`).join('')}</div>` : ''}</section>`).join('') || '<section class="card"><p class="muted" style="margin:0">No site checks yet. Players open them from the link at the bottom of the game page.</p></section>'}</div>`;
   }
 
+  /* ---------- Site test ---------- */
+  function tSap() {
+    const acc = D.sapAcc || []; const sums = D.sap || [];
+    return `<div class="stack"><section class="card"><div class="spread"><h2 style="font-size:18px">WASH SAP field test</h2><button class="btn small" data-do="reloadsap">Refresh</button></div>
+      <p class="muted small" style="margin:0">Each team assesses its own site: 1 site card and 10 tent cards (print them from Treasure hunt → Print cards). Accuracy compares the household forms with what is written on the tent cards.</p></section>
+      <div class="grid2">${D.teams.map((t, i) => { const S = sums[i] ? SAP.summarise(sums[i]) : null; const a = acc.find((x) => x.team_id === t.id) || {};
+        return `<section class="card ${teamClass(t.id)}"><h2 style="font-size:18px;display:flex;gap:8px;align-items:center"><span class="team-dot"></span>${esc(t.name)}</h2>
+          ${S ? `<div class="tablewrap"><table><tbody>
+            <tr><td>Households done / sample</td><td>${S.done} / ${S.need}</td></tr><tr><td>Site form</td><td>${S.siteDone ? 'Sent' + (S.siteBy ? ' by ' + esc(S.siteBy) : '') : 'Not yet'}</td></tr>
+            <tr><td>Accuracy vs tent cards</td><td>${a.checked ? Math.round((a.right / a.checked) * 100) + '% (' + a.right + ' of ' + a.checked + ' answers)' : '–'}</td></tr>
+            <tr><td>Time from first form to last</td><td>${S.minutes} min</td></tr><tr><td>Collectors</td><td>${Object.entries(S.byCollector).map(([k, v]) => esc(k) + ' ' + v).join(', ') || '–'}</td></tr>
+            <tr><td>Tanks (household + community)</td><td>${S.hhTanks} + ${S.cTanks}</td></tr><tr><td>Latrines (inside + outside)</td><td>${S.latIn} + ${S.latOut}</td></tr></tbody></table></div>` : '<p class="muted">No data yet.</p>'}
+          <a class="btn small" href="/sap?team=${t.id}" target="_blank" rel="noopener">Show this team's summary on the projector</a></section>`; }).join('')}</div></div>`;
+  }
+
   /* ---------- Reset ---------- */
   function tReset() {
-    const items = [['answers', 'Clear all answers', 'Removes every vote, word and quiz answer, including quiz points.'], ['points', 'Clear team points', 'Removes all points you gave by hand.'], ['hunt', 'Clear hunt progress', 'Removes all cards found. The cards stay.'], ['checks', 'Clear site checks', 'Removes all site checks sent.'], ['players', 'Remove all players', 'Everyone has to join again. Their answers are removed too.'], ['all', 'Reset everything', 'All of the above. Questions and hunt cards stay.']];
+    const items = [['answers', 'Clear all answers', 'Removes every vote, word, quiz answer, sticky note and team worksheet, including quiz points.'], ['points', 'Clear team points', 'Removes all points you gave by hand.'], ['hunt', 'Clear hunt progress', 'Removes all cards found. The cards stay.'], ['checks', 'Clear the site test', 'Removes all site and household forms.'], ['players', 'Remove all players', 'Everyone has to join again. Their answers are removed too.'], ['all', 'Reset everything', 'All of the above. Questions and hunt cards stay.']];
     return `<section class="card"><h2 style="font-size:18px">Reset before the retreat</h2><p class="muted" style="margin:0">Use these after your test run. Each button asks you to click twice.</p>
       <div class="list">${items.map(([k, l, d]) => `<div class="li"><span class="grow"><strong>${l}</strong><br><span class="small muted">${d}</span></span><button class="btn small danger" data-do="reset" data-v="${k}">${l}</button></div>`).join('')}</div></section>`;
   }
@@ -293,7 +331,9 @@
         case 'next': await move(1); break;
         case 'prev': await move(-1); break;
         case 'addact': {
-          const defaults = { poll: ['Option 1', 'Option 2'], quiz: ['Answer A', 'Answer B', 'Answer C', 'Answer D'], rating: ['Low', 'High'], words: [], open: [] };
+          const defaults = { poll: ['Option 1', 'Option 2'], quiz: ['Answer A', 'Answer B', 'Answer C', 'Answer D'], rating: ['Low', 'High'], words: [], open: [],
+            board: { columns: ['Column 1', 'Column 2'], tags: ['Worked', 'Broke down', 'Surprise'] }, dots: { board: (D.acts.find((x) => x.kind === 'board') || {}).id || '', dots: 3 },
+            team: { fields: [{ label: 'Our answer', type: 'list' }] }, allocate: { items: [], budget: 100 } };
           const nid = await act('host_save_activity', { p_id: null, p_data: { kind: v, title: 'New ' + KINDS[v].toLowerCase(), options: defaults[v], correct: v === 'quiz' ? 0 : null, max_words: v === 'words' ? 1 : 3 } }, 'Added');
           await refresh(); await loadKeys(); reopen = nid; paintTab(true); return;
         }
@@ -305,6 +345,7 @@
         case 'delcard': await act('host_delete_card', { p_id: id }, 'Card deleted'); paintTab(true); return;
         case 'reloadfinds': paintTab(true); return;
         case 'reloadchecks': paintTab(true); return;
+        case 'reloadsap': paintTab(true); return;
         case 'reset': await act('host_reset', { p_what: v }, 'Done'); break;
       }
       await refresh();

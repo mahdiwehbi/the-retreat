@@ -8,6 +8,23 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Mono:wght@600&family=IBM+Plex+Sans:wght@400;600&display=swap">
 <link rel="stylesheet" href="/style.css">
+<style>
+  .note{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;padding:10px 12px;border-radius:10px;background:var(--soft);border-left:5px solid var(--nc,var(--accent))}
+  .note p{margin:0;overflow-wrap:anywhere}
+  .note small{color:var(--muted)}
+  .n0{--nc:var(--good)} .n1{--nc:var(--bad)} .n2{--nc:var(--gold)} .n3{--nc:var(--t1)} .n4{--nc:var(--t3)}
+  .vote{min-width:52px;min-height:44px;border-radius:10px;border:2px solid var(--line);background:var(--surface);font-weight:800;font-family:var(--display);font-size:18px}
+  .vote[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .tagpick{display:flex;flex-wrap:wrap;gap:6px}
+  .tagpick button{min-height:40px;padding:6px 12px;border-radius:999px;border:2px solid var(--nc,var(--line));background:var(--surface);font-weight:600}
+  .tagpick button[aria-pressed="true"]{background:var(--nc,var(--accent));color:var(--surface)}
+  .alloc{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
+  .step{display:flex;align-items:center;gap:6px}
+  .step button{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:22px;font-weight:700}
+  .step output{min-width:44px;text-align:center;font-family:var(--mono);font-weight:600;font-size:20px}
+  .prompt{border-radius:12px;padding:12px 14px;background:color-mix(in srgb,var(--accent) 12%,var(--surface));font-weight:600}
+  .col-head{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+</style>
 </head>
 <body>
 <main class="wrap" id="app" aria-live="polite"><section class="card"><p class="muted">Loading…</p></section></main>
@@ -21,9 +38,11 @@
   const app = $('#app');
   if (!WR.configured) { WR.setupNotice(app); return; }
 
-  let me = null, teams = [], st = null, act = null, mine = null, draft = {}, sending = false, lastKey = '';
+  let me = null, teams = [], st = null, act = null, mine = null, extra = {}, draft = {}, sending = false, lastKey = '', pending = false;
+  const ui = {}; // remembered picks per activity: column, tag, allocation
 
   const teamOf = (id) => teams.find((t) => t.id === id) || { name: 'Team', id };
+  const KIND_LABEL = { poll: 'Vote', quiz: 'Quiz', words: 'Word cloud', rating: 'Rating', open: 'Your answer', board: 'Sticky notes', dots: 'Dot vote', team: 'Team worksheet', allocate: 'Share your points' };
 
   async function start() {
     try { me = await WR.checkMe(); } catch (e) { me = WR.getMe(); }
@@ -33,7 +52,7 @@
 
   function boot() {
     syncClock();
-    live(['state', 'activities', 'teams', 'participants'], refresh, 6000);
+    live(['state', 'activities', 'teams', 'participants', 'notes', 'note_votes', 'team_entries'], refresh, 6000);
     setInterval(tick, 250);
   }
 
@@ -43,13 +62,20 @@
     const p = await rows('participants', (q) => q.eq('id', me.id));
     if (!p.length) { WR.setMe(null); me = null; return WR.renderJoin(app, (m) => { me = m; refresh(); }); }
     me.team_id = p[0].team_id; me.name = p[0].name; WR.setMe(me);
-    act = null; mine = null;
+    act = null; mine = null; extra = {};
     if (st && st.activity_id) {
       const [a, r] = await Promise.all([
         rows('activities', (q) => q.eq('id', st.activity_id)),
         rows('responses', (q) => q.eq('activity_id', st.activity_id).eq('participant_id', me.id))
       ]);
       act = a[0] || null; mine = r[0] || null;
+      if (act && act.kind === 'board') extra.notes = await rows('notes', (q) => q.eq('activity_id', act.id).eq('participant_id', me.id).order('id'));
+      if (act && act.kind === 'dots') {
+        const bid = act.options && act.options.board;
+        const [n, v, b] = await Promise.all([rows('notes', (q) => q.eq('activity_id', bid).order('col').order('id')), rows('note_votes', (q) => q.eq('activity_id', act.id).eq('participant_id', me.id)), rows('activities', (q) => q.eq('id', bid))]);
+        extra.notes = n; extra.myVotes = new Set(v.map((x) => x.note_id)); extra.board = b[0] || null;
+      }
+      if (act && act.kind === 'team') { const e = await rows('team_entries', (q) => q.eq('activity_id', act.id).eq('team_id', me.team_id)); extra.entry = (e[0] && e[0].data) || {}; }
     }
     render();
   }
@@ -59,24 +85,78 @@
     return `<header class="spread"><div class="stack" style="gap:2px"><span class="eyebrow">${esc(WR.cfg.eventName)}</span><strong style="font-size:18px">${esc(me.name)}</strong></div>
       <span class="chip ${teamClass(t.id)}"><span class="team-dot"></span>${esc(t.name)}</span></header>`;
   }
-  const footer = () => `<nav class="foot-links" aria-label="More"><a href="/assess">Site check</a><a href="#" data-act="rejoin">Not ${esc(me.name)}? Join again</a></nav>`;
-
-  function waitingCard(title, text) {
-    return `<section class="card" style="text-align:center;padding:32px 18px"><div class="big-msg">${title}</div><p class="muted" style="margin:0">${text}</p></section>`;
-  }
+  const footer = () => `<nav class="foot-links" aria-label="More"><a href="/hunt">Treasure hunt</a><a href="/sap">Site test</a><a href="#" data-act="rejoin">Not ${esc(me.name)}? Join again</a></nav>`;
+  const waitingCard = (title, text) => `<section class="card" style="text-align:center;padding:32px 18px"><div class="big-msg">${title}</div><p class="muted" style="margin:0">${text}</p></section>`;
 
   function quizLeft() {
     if (!st || !st.opened_at || !act) return 0;
     return Math.max(0, act.time_limit - (now() - new Date(st.opened_at).getTime()) / 1000);
   }
 
+  /* ---------- new exercise views ---------- */
+  function vBoard(title) {
+    const o = act.options || {}; const cols = o.columns || []; const tags = o.tags || [];
+    const u = ui[act.id] || (ui[act.id] = { col: 0, tag: 0 });
+    const mineList = (extra.notes || []).map((n) => `<div class="note n${n.tag}"><div><p>${esc(n.text)}</p><small>${esc(cols[n.col] || '')} · ${esc(tags[n.tag] || '')}</small></div><button class="btn small" data-act="delnote" data-id="${n.id}" aria-label="Delete this note">✕</button></div>`).join('');
+    return `<section class="card">${title}
+      <form class="stack" data-form="note">
+        <label class="field" for="ncol">When<select id="ncol">${cols.map((c, i) => `<option value="${i}" ${u.col === i ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
+        <div class="tagpick" role="group" aria-label="Type of note">${tags.map((t, i) => `<button type="button" class="n${i}" data-act="tag" data-i="${i}" aria-pressed="${u.tag === i}">${esc(t)}</button>`).join('')}</div>
+        <textarea id="ntext" maxlength="200" aria-label="Your note" placeholder="One idea per note" style="min-height:70px">${esc(draft.note || '')}</textarea>
+        <button class="btn primary block" type="submit">Stick it on the wall</button>
+      </form></section>
+      <section class="card"><div class="spread"><strong>Your notes</strong><span class="small muted">${(extra.notes || []).length}</span></div>${mineList || '<p class="muted small" style="margin:0">Add as many as you like, one idea each.</p>'}</section>`;
+  }
+
+  function vDots(title) {
+    const o = act.options || {}; const max = o.dots || 3; const used = extra.myVotes ? extra.myVotes.size : 0;
+    const b = extra.board || { options: {} }; const cols = (b.options || {}).columns || []; const tags = (b.options || {}).tags || [];
+    const groups = cols.map((c, i) => ({ c, notes: (extra.notes || []).filter((n) => n.col === i) })).filter((g) => g.notes.length);
+    return `<section class="card">${title}<div class="notice"><strong>${max - used}</strong> of ${max} dots left. Tap a note to give or take back a dot.</div></section>
+      ${groups.map((g) => `<section class="card"><span class="col-head">${esc(g.c)}</span>${g.notes.map((n) => { const on = extra.myVotes.has(n.id);
+        return `<div class="note n${n.tag}"><div><p>${esc(n.text)}</p><small>${esc(tags[n.tag] || '')}</small></div><button class="vote" data-act="vote" data-id="${n.id}" aria-pressed="${on}" aria-label="${on ? 'Remove my dot' : 'Give a dot'}">${on ? '●' : '○'}</button></div>`; }).join('')}</section>`).join('') || '<section class="card"><p class="muted" style="margin:0">No notes on the wall yet.</p></section>'}`;
+  }
+
+  function vTeam(title) {
+    const o = act.options || {}; const fields = o.fields || []; const d = extra.entry || {};
+    const ti = teams.findIndex((t) => t.id === me.team_id);
+    const prompt = (o.prompts || [])[ti];
+    return `<section class="card">${title}${prompt ? `<div class="prompt">${esc(prompt)}</div>` : ''}<p class="muted small" style="margin:0">Everyone in ${esc(teamOf(me.team_id).name)} edits the same sheet. Changes appear on all your phones.</p></section>
+      ${fields.map((f, i) => {
+        const v = d['f' + i];
+        if (f.type === 'text') {
+          const val = draft['t' + i] != null ? draft['t' + i] : (typeof v === 'string' ? v : '');
+          return `<section class="card"><label class="field" for="tf${i}">${esc(f.label)}<textarea id="tf${i}" data-text="${i}" maxlength="400">${esc(val)}</textarea></label><button class="btn small primary" data-act="savetext" data-i="${i}">Save</button>${typeof v === 'string' && v ? '<span class="small muted">Saved for the team</span>' : ''}</section>`;
+        }
+        const items = Array.isArray(v) ? v : []; const tags = f.tags || [];
+        const u = ui[act.id + ':' + i] || (ui[act.id + ':' + i] = { tag: 0 });
+        return `<section class="card"><strong>${esc(f.label)}</strong>
+          ${items.map((it, k) => `<div class="note n${it.g == null ? 3 : it.g}"><div><p>${tags.length ? `<strong>${esc(tags[it.g] || '')}:</strong> ` : ''}${esc(it.t)}</p><small>${esc(it.by || '')}</small></div><button class="btn small" data-act="delitem" data-i="${i}" data-k="${k}" aria-label="Remove">✕</button></div>`).join('')}
+          <form class="stack" data-form="item" data-i="${i}">
+            ${tags.length ? `<div class="tagpick" role="group" aria-label="Type">${tags.map((t, k) => `<button type="button" class="n${k}" data-act="itag" data-i="${i}" data-k="${k}" aria-pressed="${u.tag === k}">${esc(t)}</button>`).join('')}</div>` : ''}
+            <div class="row"><input id="li${i}" maxlength="400" aria-label="New item for ${esc(f.label)}" placeholder="Add a point" value="${esc(draft['l' + i] || '')}" style="flex:1 1 180px"><button class="btn primary" type="submit">Add</button></div>
+          </form></section>`;
+      }).join('')}`;
+  }
+
+  function vAllocate(title) {
+    const o = act.options || {}; const budget = o.budget || 100;
+    const items = (o.items && o.items.length) ? o.items : teams.map((t) => t.name);
+    const u = ui[act.id] || (ui[act.id] = { a: (mine && mine.value.alloc) ? mine.value.alloc.slice() : items.map(() => 0) });
+    while (u.a.length < items.length) u.a.push(0);
+    const used = u.a.reduce((s, x) => s + x, 0); const stepN = budget >= 50 ? 10 : 1;
+    return `<section class="card">${title}<div class="notice"><strong>${budget - used}</strong> of ${budget} left to give</div>
+      ${items.map((it, i) => `<div class="alloc"><strong style="overflow-wrap:anywhere">${esc(it)}</strong><div class="step"><button data-act="aminus" data-i="${i}" data-n="${stepN}" aria-label="Less for ${esc(it)}">−</button><output>${u.a[i]}</output><button data-act="aplus" data-i="${i}" data-n="${stepN}" aria-label="More for ${esc(it)}">+</button></div></div>`).join('')}
+      <button class="btn primary block" data-act="sendalloc" ${used ? '' : 'disabled'}>${mine ? 'Update' : 'Send'}</button>
+      ${mine ? '<p class="muted small" style="margin:0">Sent. You can change it and send again.</p>' : ''}</section>`;
+  }
+
   function body() {
     if (!st || !act || st.phase === 'idle') {
-      return waitingCard('Look at the screen', 'The next question will appear here. Keep this page open.') +
-        `<section class="card"><strong>Treasure hunt</strong><p class="muted small" style="margin:0">Found a card? Scan its QR code with your phone camera.</p></section>`;
+      return waitingCard('Look at the screen', 'The next question will appear here. Keep this page open.');
     }
     const k = act.kind;
-    const title = `<div class="eyebrow">${({ poll: 'Vote', quiz: 'Quiz', words: 'Word cloud', rating: 'Rating', open: 'Your answer' })[k]}</div><h1 style="font-size:24px">${esc(act.title)}</h1>`;
+    const title = `<div class="eyebrow">${KIND_LABEL[k] || ''}</div><h1 style="font-size:24px">${esc(act.title)}</h1>`;
 
     if (st.phase === 'reveal' && k === 'quiz') {
       const right = mine && mine.correct;
@@ -87,8 +167,12 @@
       return `<section class="card">${title}${msg}<div class="answers">${opts}</div></section>`;
     }
     if (st.phase !== 'open') {
-      return `<section class="card">${title}<p class="notice">${mine ? 'Your answer is in. ' : ''}Answers are closed. Look at the screen.</p></section>`;
+      return `<section class="card">${title}<p class="notice">${mine ? 'Your answer is in. ' : ''}This one is closed. Look at the screen.</p></section>`;
     }
+    if (k === 'board') return vBoard(title);
+    if (k === 'dots') return vDots(title);
+    if (k === 'team') return vTeam(title);
+    if (k === 'allocate') return vAllocate(title);
 
     if (k === 'quiz') {
       if (mine) {
@@ -126,15 +210,17 @@
       ${mine ? '<p class="muted small" style="margin:0">Sent. You can edit and send again.</p>' : ''}</section>`;
   }
 
-  function render() {
-    const key = JSON.stringify([st && st.activity_id, st && st.phase, mine && mine.value, mine && mine.points, me.team_id, teams.map((t) => t.name)]);
-    const typing = document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName) && app.contains(document.activeElement);
-    if (key === lastKey && typing) return;
-    if (key !== lastKey) { if (!(st && act && lastKey.includes(act.id))) draft = {}; }
-    lastKey = key;
+  function typing() { const a = document.activeElement; return a && app.contains(a) && /INPUT|TEXTAREA|SELECT/.test(a.tagName); }
+
+  function render(force) {
+    const key = JSON.stringify([st && st.activity_id, st && st.phase, mine && mine.value, mine && mine.points, me.team_id, teams.map((t) => t.name), extra.notes && extra.notes.map((n) => n.id), extra.myVotes && [...extra.myVotes], extra.entry]);
+    if (!force && typing()) { if (key !== lastKey) pending = true; return; }
+    if (lastKey && !lastKey.startsWith(JSON.stringify([st && st.activity_id]).slice(0, -1))) draft = {};
+    lastKey = key; pending = false;
     app.innerHTML = header() + body() + footer();
     tick();
   }
+  app.addEventListener('focusout', () => setTimeout(() => { if (pending && !typing()) render(true); }, 150));
 
   function tick() {
     const el = document.getElementById('qtime');
@@ -145,39 +231,83 @@
     }
   }
 
+  function handleErr(e) {
+    if (/join again/i.test(e.message)) { WR.setMe(null); location.reload(); return; }
+    toast(e.message, 4000);
+  }
+
   async function send(value) {
     if (sending || !act) return;
     sending = true;
     try {
       const res = await rpc('submit_response', { p_pid: me.id, p_token: me.token, p_activity: act.id, p_value: value });
-      if (res === 'closed') toast('Answers are closed.');
+      if (res === 'closed') toast('This one is closed.');
       else if (res === 'late') toast('Too late for this one.');
       else if (res === 'already') toast('You already answered.');
       else toast('Sent');
       draft = {};
       const r = await rows('responses', (q) => q.eq('activity_id', act.id).eq('participant_id', me.id));
-      mine = r[0] || null; lastKey = ''; render();
-    } catch (e) {
-      if (/join again/i.test(e.message)) { WR.setMe(null); location.reload(); return; }
-      toast(e.message, 4000);
-    } finally { sending = false; }
+      mine = r[0] || null; render(true);
+    } catch (e) { handleErr(e); } finally { sending = false; }
   }
 
-  app.addEventListener('click', (e) => {
+  async function call(fn, args, ok) {
+    if (sending) return; sending = true;
+    try { const r = await rpc(fn, Object.assign({ p_pid: me.id, p_token: me.token }, args)); if (ok) toast(ok); sending = false; await refresh(); render(true); return r; }
+    catch (e) { sending = false; handleErr(e); }
+  }
+
+  app.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
-    if (b.dataset.act === 'choice') send({ choice: Number(b.dataset.i) });
-    if (b.dataset.act === 'score') send({ score: Number(b.dataset.n) });
-    if (b.dataset.act === 'rejoin') { e.preventDefault(); WR.setMe(null); location.reload(); }
+    const a = b.dataset.act, i = Number(b.dataset.i);
+    if (a === 'choice') send({ choice: i });
+    if (a === 'score') send({ score: Number(b.dataset.n) });
+    if (a === 'rejoin') { e.preventDefault(); WR.setMe(null); location.reload(); }
+    if (a === 'tag') { ui[act.id].tag = i; app.querySelectorAll('[data-act="tag"]').forEach((x) => x.setAttribute('aria-pressed', String(Number(x.dataset.i) === i))); }
+    if (a === 'itag') { const k = Number(b.dataset.k); ui[act.id + ':' + i].tag = k; app.querySelectorAll(`[data-act="itag"][data-i="${i}"]`).forEach((x) => x.setAttribute('aria-pressed', String(Number(x.dataset.k) === k))); }
+    if (a === 'delnote') call('delete_note', { p_note: Number(b.dataset.id) }, 'Note removed');
+    if (a === 'vote') {
+      const r = await call('toggle_vote', { p_activity: act.id, p_note: Number(b.dataset.id) });
+      if (r === 'full') toast('No dots left. Take one back first.');
+    }
+    if (a === 'savetext') { const t = ($('#tf' + i) || {}).value || ''; delete draft['t' + i]; call('team_edit', { p_activity: act.id, p_field: i, p_op: 'set', p_text: t }, 'Saved for the team'); }
+    if (a === 'delitem') call('team_edit', { p_activity: act.id, p_field: i, p_op: 'remove', p_text: null, p_index: Number(b.dataset.k) }, 'Removed');
+    if (a === 'aplus' || a === 'aminus') {
+      const u = ui[act.id]; const budget = (act.options && act.options.budget) || 100; const n = Number(b.dataset.n);
+      const used = u.a.reduce((s, x) => s + x, 0);
+      if (a === 'aplus') u.a[i] += Math.min(n, budget - used); else u.a[i] = Math.max(0, u.a[i] - n);
+      render(true);
+    }
+    if (a === 'sendalloc') send({ alloc: ui[act.id].a });
   });
   app.addEventListener('input', (e) => {
-    if (e.target.id === 'otext') draft.text = e.target.value;
-    if (/^w\d+$/.test(e.target.id)) { draft.words = Array.from(app.querySelectorAll('[id^="w"]')).map((x) => x.value); }
+    const id = e.target.id;
+    if (id === 'otext') draft.text = e.target.value;
+    if (id === 'ntext') draft.note = e.target.value;
+    if (/^w\d+$/.test(id)) draft.words = Array.from(app.querySelectorAll('[id^="w"]')).map((x) => x.value);
+    if (/^tf\d+$/.test(id)) draft['t' + id.slice(2)] = e.target.value;
+    if (/^li\d+$/.test(id)) draft['l' + id.slice(2)] = e.target.value;
   });
-  app.addEventListener('submit', (e) => {
+  app.addEventListener('change', (e) => { if (e.target.id === 'ncol') ui[act.id].col = Number(e.target.value); });
+  app.addEventListener('submit', async (e) => {
     const f = e.target.closest('[data-form]'); if (!f) return;
     e.preventDefault();
-    if (f.dataset.form === 'words') send({ words: Array.from(f.querySelectorAll('input')).map((x) => x.value.trim()).filter(Boolean) });
-    else send({ text: (f.querySelector('textarea').value || '').trim() });
+    const kind = f.dataset.form;
+    if (kind === 'words') return send({ words: Array.from(f.querySelectorAll('input')).map((x) => x.value.trim()).filter(Boolean) });
+    if (kind === 'open') return send({ text: (f.querySelector('textarea').value || '').trim() });
+    if (kind === 'note') {
+      const t = ($('#ntext').value || '').trim(); if (!t) return toast('Write your note first.');
+      const u = ui[act.id]; u.col = Number($('#ncol').value);
+      draft.note = ''; document.activeElement && document.activeElement.blur();
+      return call('add_note', { p_activity: act.id, p_col: u.col, p_tag: u.tag, p_text: t }, 'On the wall');
+    }
+    if (kind === 'item') {
+      const i = Number(f.dataset.i); const inp = $('#li' + i); const t = (inp.value || '').trim(); if (!t) return toast('Write something first.');
+      const fieldTags = ((act.options.fields || [])[i] || {}).tags || [];
+      const tag = fieldTags.length ? ui[act.id + ':' + i].tag : null;
+      delete draft['l' + i]; inp.blur();
+      return call('team_edit', { p_activity: act.id, p_field: i, p_op: 'add', p_text: t, p_tag: tag }, 'Added');
+    }
   });
 
   start();

@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Site Test · WASH Retreat</title>
+<meta name="theme-color" content="#0A6E78">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Mono:wght@600&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .q{display:flex;flex-direction:column;gap:6px}
+  .q-label{font-weight:600}
+  .opts{display:flex;flex-wrap:wrap;gap:6px}
+  .opts button{min-height:44px;padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--surface);font-weight:600;text-align:left}
+  .opts button[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--surface))}
+  .nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+  .sec{font-family:var(--display);font-size:18px;font-weight:800;margin-top:6px}
+  .hint{font-size:13px;color:var(--muted)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+  .kpi{background:var(--soft);border-radius:12px;padding:10px 12px}
+  .kpi b{display:block;font-family:var(--mono);font-size:26px;font-variant-numeric:tabular-nums}
+  .kpi span{font-size:13px;color:var(--muted)}
+  .bar{height:12px;background:var(--soft);border-radius:999px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--accent);border-radius:999px}
+  .tents{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+  .tents a,.tents span{display:grid;place-items:center;min-height:44px;border-radius:10px;border:2px solid var(--line);font-weight:700;text-decoration:none;color:var(--ink)}
+  .tents .done{background:var(--good);border-color:var(--good);color:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:14px}
+  td{padding:4px 6px;border-bottom:1px solid var(--line)}
+  td:last-child{text-align:right;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="polite"><section class="card"><p class="muted">Loading…</p></section></main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/lib.js"></script>
+<script src="/sap.js"></script>
+<script>
+(function () {
+  const { $, esc, teamClass, rpc, rows, live, toast } = WR;
+  const app = $('#app');
+  if (!WR.configured) { WR.setupNotice(app); return; }
+  const P = new URLSearchParams(location.search);
+  const tentCode = (P.get('t') || '').trim().toUpperCase();
+  const viewTeam = Number(P.get('team')) || null; // summary on the projector, no sign-in needed
+  let me = null, teams = [], tents = [], summary = null, form = {}, kapOn = false, started = null, mode = P.get('form') === 'site' ? 'site' : tentCode ? 'hh' : 'home';
+
+  async function start() {
+    teams = await rows('teams', (q) => q.order('id'));
+    if (viewTeam) return live(['sap_households', 'sap_sites'], async () => { summary = await rpc('sap_summary', { p_team: viewTeam }); renderSummaryOnly(); }, 5000);
+    try { me = await WR.checkMe(); } catch (e) { me = WR.getMe(); }
+    if (!me) return WR.renderJoin(app, (m) => { me = m; boot(); });
+    boot();
+  }
+  async function boot() {
+    tents = await rows('sap_tents', (q) => q.eq('team_id', me.team_id).order('number'));
+    if (mode === 'home') live(['sap_households', 'sap_sites'], refresh, 6000); else render();
+  }
+  async function refresh() { summary = await rpc('sap_summary', { p_team: me.team_id }); if (mode === 'home') render(); }
+  const teamName = (id) => (teams.find((t) => t.id === id) || {}).name || 'Team';
+
+  /* ---------- forms ---------- */
+  function fieldHtml(f) {
+    if (f.section) return `<div class="sec">${esc(f.section)}</div>`;
+    if (f.showIf && form[f.showIf[0]] !== f.showIf[1]) return '';
+    const v = form[f.id];
+    if (f.type === 'choice') return `<div class="q" role="group" aria-label="${esc(f.label)}"><span class="q-label">${esc(f.label)}</span><div class="opts">${f.options.map((o) => `<button type="button" data-f="${f.id}" data-v="${esc(o)}" aria-pressed="${v === o}">${esc(o)}</button>`).join('')}</div>${f.hint ? `<span class="hint">${esc(f.hint)}</span>` : ''}</div>`;
+    if (f.type === 'number') return `<label class="q" for="f-${f.id}"><span class="q-label">${esc(f.label)}</span><input id="f-${f.id}" data-n="${f.id}" type="number" min="0" inputmode="numeric" value="${esc(v == null ? '' : v)}"></label>`;
+    return `<label class="q" for="f-${f.id}"><span class="q-label">${esc(f.label)}</span><input id="f-${f.id}" data-n="${f.id}" maxlength="80" value="${esc(v || '')}"></label>`;
+  }
+
+  function renderForm() {
+    const isSite = mode === 'site';
+    const tent = tents.find((t) => t.code === tentCode);
+    if (!isSite && !tent) {
+      app.innerHTML = `<section class="card"><h1 style="font-size:24px">Tent card not found</h1><p class="muted">${tentCode ? `${esc(tentCode)} is not one of ${esc(teamName(me.team_id))}'s tents. Each team assesses its own site.` : ''}</p><a class="btn primary block" href="/sap">Back to your site</a></section>`;
+      return;
+    }
+    if (!started) started = new Date().toISOString();
+    const fields = isSite ? SAP.site : SAP.household;
+    app.innerHTML = `
+      <header class="spread"><span class="eyebrow">WASH SAP test · ${esc(teamName(me.team_id))}</span><a class="small" href="/sap">Site summary</a></header>
+      <section class="card"><h1 style="font-size:26px">${isSite ? 'Site form · shawish and observation' : `Household form · tent ${tent.number}`}</h1>
+        <p class="muted" style="margin:0">${isSite ? 'Read your team’s site card (the shawish interview) and fill what it says. Household numbers come from the household forms, not from here.' : 'Read the tent card as if you were interviewing the family and observing the shelter.'}</p></section>
+      <form id="sf" class="card" novalidate>${fields.map(fieldHtml).join('')}
+        ${isSite ? '' : `<div class="sec">KAP</div><label class="row" for="kapon" style="font-weight:600"><input id="kapon" type="checkbox" ${kapOn ? 'checked' : ''} style="width:auto"> Do the KAP for this household</label>
+          <span class="hint">The site needs KAP for a sample of households only. Your summary shows how many are done.</span>${kapOn ? SAP.kap.map(fieldHtml).join('') : ''}`}
+        <button class="btn primary block" type="submit">Send ${isSite ? 'site form' : 'household'}</button></form>
+      <nav class="foot-links"><a href="/sap">Back to your site</a></nav>`;
+  }
+
+  function render() {
+    if (mode !== 'home') return renderForm();
+    const S = summary ? SAP.summarise(summary) : null;
+    const doneSet = new Set(((summary && summary.households) || []).map((h) => h.tent));
+    app.innerHTML = `
+      <header class="spread"><span class="eyebrow">WASH SAP field test</span><span class="chip ${teamClass(me.team_id)}"><span class="team-dot"></span>${esc(teamName(me.team_id))}</span></header>
+      <section class="card"><h1 style="font-size:26px">Your site</h1>
+        <p class="muted" style="margin:0">One person takes the site form with the shawish. Everyone else scans tent cards and fills a household form each. The summary adds it all up as you go.</p>
+        <div class="row"><a class="btn primary" href="/sap?form=site">${S && S.siteDone ? 'Edit the site form' : 'Fill the site form'}</a></div>
+        ${S && S.siteDone ? `<span class="hint">Site form sent${S.siteBy ? ' by ' + esc(S.siteBy) : ''}.</span>` : ''}</section>
+      <section class="card"><strong>Tents</strong><span class="hint">Scan a tent card's QR code, or tap a number.</span>
+        <div class="tents">${tents.map((t) => `<a class="${doneSet.has(t.number) ? 'done' : ''}" href="/sap?t=${encodeURIComponent(t.code)}" aria-label="Tent ${t.number}${doneSet.has(t.number) ? ', done' : ''}">${t.number}</a>`).join('')}</div></section>
+      ${S ? summaryHtml(S) : ''}
+      <nav class="foot-links"><a href="/">Back to the game</a></nav>`;
+  }
+
+  function summaryHtml(S) {
+    const pct = S.need ? Math.min(100, Math.round((S.done / S.need) * 100)) : 0;
+    const list = (rowsArr) => rowsArr.length ? `<table>${rowsArr.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join('')}</table>` : '<span class="hint">No households yet.</span>';
+    return `<section class="card"><div class="spread"><strong>Households</strong><span class="timer">${S.done} / ${S.need} needed</span></div>
+        <div class="bar" aria-label="${pct}% of the sample"><i style="width:${pct}%"></i></div>
+        <span class="hint">Sample for ${S.N} shelters (80% confidence, 10% margin): ${S.need}. KAP done: ${S.kap}.${S.minutes ? ` Time so far: ${S.minutes} min.` : ''}</span>
+        ${Object.keys(S.byCollector).length ? `<span class="hint">By collector: ${Object.entries(S.byCollector).map(([k, v]) => `${esc(k)} ${v}`).join(' · ')}</span>` : ''}</section>
+      <section class="card"><strong>Site summary (auto-generated)</strong>
+        <div class="kpis"><div class="kpi"><b>${S.people}</b><span>people in assessed households</span></div><div class="kpi"><b>${S.children}</b><span>under 18</span></div><div class="kpi"><b>${S.elderly}</b><span>aged 60+</span></div><div class="kpi"><b>${S.female}</b><span>female-headed</span></div>
+        <div class="kpi"><b>${S.tanks}</b><span>tanks (${S.hhTanks} household + ${S.cTanks} community)</span></div><div class="kpi"><b>${S.volume.toFixed(1)}</b><span>m³ storage</span></div>
+        <div class="kpi"><b>${S.latIn + S.latOut}</b><span>latrines (${S.latIn} inside + ${S.latOut} outside)</span></div><div class="kpi"><b>${S.latInOk + S.latOutOk}</b><span>improved and usable</span></div>
+        <div class="kpi"><b>${S.done ? Math.round((S.soap / S.done) * 100) : 0}%</b><span>with soap</span></div><div class="kpi"><b>${S.pays}</b><span>pay for water</span></div></div>
+        <span class="q-label">Drinking water source</span>${list(S.drink)}
+        <span class="q-label">Greywater disposal (per shelter)</span>${list(S.grey)}</section>`;
+  }
+
+  function renderSummaryOnly() {
+    const S = SAP.summarise(summary);
+    app.innerHTML = `<header class="spread"><span class="eyebrow">WASH SAP field test</span><span class="chip ${teamClass(viewTeam)}"><span class="team-dot"></span>${esc(teamName(viewTeam))}</span></header>${summaryHtml(S)}`;
+  }
+
+  /* ---------- events ---------- */
+  app.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-f]'); if (!b) return;
+    form[b.dataset.f] = b.dataset.v;
+    if (b.dataset.f === 'latrine_inside' && b.dataset.v === 'No') form.latrine_ok = 'No';
+    const y = window.scrollY; renderForm(); window.scrollTo(0, y);
+  });
+  app.addEventListener('input', (e) => { const id = e.target.dataset.n; if (id) form[id] = e.target.value.trim(); });
+  app.addEventListener('change', (e) => { if (e.target.id === 'kapon') { kapOn = e.target.checked; const y = window.scrollY; renderForm(); window.scrollTo(0, y); } });
+  app.addEventListener('submit', async (e) => {
+    if (e.target.id !== 'sf') return;
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type=submit]'); btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      if (mode === 'site') {
+        await rpc('sap_save_site', { p_pid: me.id, p_token: me.token, p_data: form, p_started: started });
+      } else {
+        const data = {}; SAP.household.forEach((f) => { if (f.id && form[f.id] != null && form[f.id] !== '') data[f.id] = String(form[f.id]); });
+        SAP.HH_TANKS.forEach((s) => { if (data['tank_' + s] == null) data['tank_' + s] = '0'; });
+        if (data.latrine_inside === 'No') data.latrine_ok = 'No';
+        const kap = kapOn ? Object.fromEntries(SAP.kap.filter((f) => form[f.id]).map((f) => [f.id, form[f.id]])) : null;
+        await rpc('sap_save_household', { p_pid: me.id, p_token: me.token, p_tent: tentCode, p_data: data, p_kap: kap, p_started: started });
+      }
+      toast('Sent'); setTimeout(() => (location.href = '/sap'), 600);
+    } catch (ex) {
+      if (/join again/i.test(ex.message)) { WR.setMe(null); location.reload(); return; }
+      toast(ex.message, 4000); btn.disabled = false; btn.textContent = 'Try again';
+    }
+  });
+
+  start();
+})();
+</script>
+</body>
+</html>

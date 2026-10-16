@@ -68,6 +68,23 @@
   .mini{display:flex;align-items:center;gap:.6em}
   .mini .qr{padding:.25em;border-radius:.3em}
   .mini .qr img,.mini .qr canvas{width:3.4em!important}
+  .board{flex:1;min-height:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:.6em;overflow:hidden}
+  .bcol{display:flex;flex-direction:column;gap:.35em;min-width:0;overflow:hidden}
+  .bcol h3{font-size:.72em;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-family:var(--body);font-weight:600;min-height:2.6em}
+  .stick{background:var(--surface);border:1px solid var(--line);border-left:.35em solid var(--nc,var(--accent));border-radius:.35em;padding:.3em .45em;font-size:.62em;line-height:1.3;overflow-wrap:anywhere}
+  .stick b{float:right;font-family:var(--mono);margin-left:.4em}
+  .n0{--nc:var(--good)} .n1{--nc:var(--bad)} .n2{--nc:var(--gold)} .n3{--nc:var(--t1)} .n4{--nc:var(--t3)}
+  .legend{display:flex;gap:1.2em;font-size:.7em;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:.4em}
+  .legend i{width:.8em;height:.8em;border-radius:.2em;background:var(--nc);display:inline-block}
+  .teams3{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1em;overflow:hidden}
+  .tsheet{border-top:.3em solid var(--tc);background:var(--surface);border-radius:.5em;padding:.6em .8em;display:flex;flex-direction:column;gap:.45em;min-width:0;overflow:hidden;font-size:.72em}
+  .tsheet h3{font-size:1.3em}
+  .tsheet .pr{font-weight:600;color:var(--accent)}
+  .tsheet .fl{font-size:.8em;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:.3em}
+  .tsheet ul{margin:0;padding-left:1.1em}
+  .tsheet li{margin:.1em 0;overflow-wrap:anywhere}
+  .tsheet .tg{font-weight:700}
   @media (max-width:760px){.lobby{grid-template-columns:minmax(0,1fr)}.teamcols{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
@@ -107,7 +124,17 @@
     const [st, teams, players, acts] = await Promise.all([rows('state'), rows('teams', (q) => q.order('id')), rows('participants'), rows('activities', (q) => q.order('position'))]);
     D.st = st[0] || {}; D.teams = teams; D.players = players; D.acts = acts;
     const screen = D.st.screen;
-    if (screen === 'activity' && D.st.activity_id) D.resp = await rows('responses', (q) => q.eq('activity_id', D.st.activity_id));
+    if (screen === 'activity' && D.st.activity_id) {
+      D.resp = await rows('responses', (q) => q.eq('activity_id', D.st.activity_id));
+      const a = acts.find((x) => x.id === D.st.activity_id);
+      if (a && a.kind === 'board') { D.notes = await rows('notes', (q) => q.eq('activity_id', a.id).order('id')); }
+      if (a && a.kind === 'dots') {
+        const bid = (a.options || {}).board;
+        const [n, v] = await Promise.all([rows('notes', (q) => q.eq('activity_id', bid).order('id')), rows('note_votes', (q) => q.eq('activity_id', a.id))]);
+        D.notes = n; D.votes = v; D.boardAct = acts.find((x) => x.id === bid) || null;
+      }
+      if (a && a.kind === 'team') D.entries = await rows('team_entries', (q) => q.eq('activity_id', a.id));
+    }
     else if (screen === 'leaderboard') D.resp = await rows('responses', (q) => q.gt('points', 0));
     if (screen === 'teams' || screen === 'podium') D.board = await rpc('scoreboard');
     if (screen === 'hunt') { D.hunt = await rpc('hunt_board'); D.board = await rpc('scoreboard'); }
@@ -143,14 +170,42 @@
   function vActivity() {
     const st = D.st, a = D.acts.find((x) => x.id === st.activity_id);
     if (!a) return `<div class="empty"><b>Get ready</b>The next question is coming.</div>`;
-    const R = D.resp; const count = R.length;
-    const status = st.phase === 'open' ? (a.kind === 'quiz' ? '' : `${count} answer${count === 1 ? '' : 's'}`)
+    const R = D.resp; let count = R.length;
+    if (a.kind === 'board') count = (D.notes || []).length;
+    if (a.kind === 'dots') count = new Set((D.votes || []).map((v) => v.participant_id)).size;
+    if (a.kind === 'team') count = (D.entries || []).length;
+    const status = st.phase === 'open' ? (a.kind === 'quiz' ? '' : `${count} ${({ board: 'notes', dots: 'people voted', team: 'teams writing' })[a.kind] || (count === 1 ? 'answer' : 'answers')}`)
       : st.phase === 'idle' ? 'Get ready' : st.phase === 'reveal' ? 'Answer' : 'Answers closed';
-    const head = `<div class="top"><div class="stack" style="gap:.3em;min-width:0"><div class="kick">${({ poll: 'Vote on your phone', quiz: 'Quiz', words: 'Word cloud', rating: 'Rating', open: 'Open question' })[a.kind]}</div><h1 class="ttl">${esc(a.title)}</h1></div>
+    const head = `<div class="top"><div class="stack" style="gap:.3em;min-width:0"><div class="kick">${({ poll: 'Vote on your phone', quiz: 'Quiz', words: 'Word cloud', rating: 'Rating', open: 'Open question', board: 'Sticky notes · on your phone', dots: 'Dot vote · on your phone', team: 'Team worksheets', allocate: 'Share your points' })[a.kind]}</div><h1 class="ttl">${esc(a.title)}</h1></div>
       <div class="stack" style="align-items:flex-end;gap:.2em">${a.kind === 'quiz' && st.phase === 'open' ? `<span class="big-timer" data-timer></span><span class="muted">${count} answered</span>` : `<span class="muted">${status}</span>`}</div></div>`;
 
     if (st.phase === 'idle') return head + joinedBlock('Phones ready? Answers open in a moment.');
 
+    if (a.kind === 'board' || a.kind === 'dots') {
+      const ba = a.kind === 'dots' ? (D.boardAct || { options: {} }) : a;
+      const cols = (ba.options || {}).columns || []; const tags = (ba.options || {}).tags || [];
+      const votes = new Map(); (D.votes || []).forEach((v) => votes.set(v.note_id, (votes.get(v.note_id) || 0) + 1));
+      const notes = (D.notes || []).slice();
+      if (a.kind === 'dots') notes.sort((x, y) => (votes.get(y.id) || 0) - (votes.get(x.id) || 0));
+      const legend = `<div class="legend">${tags.map((t, i) => `<span class="n${i}"><i></i>${esc(t)}</span>`).join('')}</div>`;
+      return head + legend + `<div class="board">${cols.map((c, i) => `<div class="bcol"><h3>${esc(c)}</h3>${notes.filter((n) => n.col === i).map((n) => `<div class="stick n${n.tag}">${a.kind === 'dots' && votes.get(n.id) ? `<b>${'●'.repeat(Math.min(votes.get(n.id), 8))} ${votes.get(n.id)}</b>` : ''}${esc(n.text)}</div>`).join('')}</div>`).join('')}</div>`;
+    }
+    if (a.kind === 'team') {
+      const o = a.options || {}; const fields = o.fields || [];
+      return head + `<div class="teams3">${D.teams.map((t, ti) => { const e = (D.entries || []).find((x) => x.team_id === t.id); const d = (e && e.data) || {};
+        return `<div class="tsheet ${teamClass(t.id)}"><h3>${esc(t.name)}</h3>${(o.prompts || [])[ti] ? `<div class="pr">${esc(o.prompts[ti])}</div>` : ''}
+          ${fields.map((f, i) => { const v = d['f' + i]; const tg = f.tags || [];
+            if (f.type === 'text') return `<div class="fl">${esc(f.label)}</div><div>${v ? esc(v) : '<span class="muted">…</span>'}</div>`;
+            const items = Array.isArray(v) ? v : [];
+            return `<div class="fl">${esc(f.label)}</div>${items.length ? `<ul>${items.map((it) => `<li class="n${it.g == null ? 3 : it.g}">${tg.length ? `<span class="tg" style="color:var(--nc)">${esc(tg[it.g] || '')}:</span> ` : ''}${esc(it.t)}</li>`).join('')}</ul>` : '<span class="muted">…</span>'}`; }).join('')}</div>`; }).join('')}</div>`;
+    }
+    if (a.kind === 'allocate') {
+      const o = a.options || {}; const items = (o.items && o.items.length) ? o.items : D.teams.map((t) => t.name);
+      const tot = items.map((_, i) => R.reduce((s2, r) => s2 + (Number((r.value.alloc || [])[i]) || 0), 0));
+      const top = Math.max(...tot, 0);
+      const list = items.map((it, i) => ({ label: it + (st.phase !== 'open' && tot[i] === top && top > 0 ? '  · top' : ''), n: tot[i], cls: (o.items && o.items.length) ? '' : teamClass(D.teams[i] && D.teams[i].id) }));
+      return head + bars(list, Math.max(1, ...tot));
+    }
     if (a.kind === 'poll' || a.kind === 'quiz') {
       const counts = a.options.map((_, i) => R.filter((r) => r.value.choice === i).length);
       const reveal = a.kind === 'quiz' && st.phase === 'reveal';
@@ -250,7 +305,7 @@
 
   syncClock();
   setInterval(tick, 250);
-  setTimeout(() => live(['state', 'responses', 'participants', 'activities', 'teams', 'team_points'], refresh, 4000), 300);
+  setTimeout(() => live(['state', 'responses', 'participants', 'activities', 'teams', 'team_points', 'notes', 'note_votes', 'team_entries'], refresh, 4000), 300);
   document.addEventListener('dblclick', () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) {} });
 })();
 </script>
