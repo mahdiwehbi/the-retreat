@@ -158,6 +158,7 @@
       const used = new Set(); const open = [];
       S.forEach((ses) => {
         (ses.opens || []).forEach((g) => { if (!open.includes(g)) open.push(g); });
+        (ses.closes || []).forEach((g) => { const i = open.indexOf(g); if (i >= 0) open.splice(i, 1); });
         const lv = open.slice();
         s.push({ k: 'session', s: ses, live: lv });
         if (ses.screen === 'hunt') s.push({ k: 'hunt', s: ses, live: lv });
@@ -189,7 +190,7 @@
       return 0;
     },
     patch(x) {
-      if (x.k === 'lobby') return { screen: 'lobby' };
+      if (x.k === 'lobby') return { screen: 'lobby', live: ['register'] };
       if (x.k === 'session') return { screen: 'session', session: x.s.key, live: x.live };
       if (x.k === 'hunt') return { screen: 'hunt', session: x.s.key, live: x.live };
       if (x.k === 'q') return { activity_id: x.a.id, screen: 'activity', phase: 'open' };
@@ -217,7 +218,7 @@
   function setPin(v) { try { v ? localStorage.setItem('wr-pin', v) : localStorage.removeItem('wr-pin'); } catch (e) {} }
 
   // QR groups: closed until the presenter reaches the session that opens them.
-  const GROUPS = { badges: 'Name badges (word race)', rooms: 'Room bonus cards', lake: 'Lake: WAP deck and field tasks', sap: 'Site test (tent and site cards)' };
+  const GROUPS = { register: 'Registration (badge check-in and join)', badges: 'Name badges (word race)', rooms: 'Room bonus cards', lake: 'Lake: WAP deck and field tasks', sap: 'Site test (tent and site cards)' };
   const isLive = (st, g) => !!(st && Array.isArray(st.live) && st.live.includes(g));
   window.WR = { GROUPS, isLive, flow, getPin, setPin, cfg, configured, sb, $, esc, LETTERS, teamClass, getMe, setMe, rpc, rows, live, syncClock, now, toast, uploadPhoto, checkMe, renderJoin, setupNotice, friendly };
 })();

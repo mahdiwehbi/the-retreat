@@ -86,7 +86,7 @@
     return `<header class="spread"><div class="stack" style="gap:2px"><img src="/logo.png" alt="WaSH Sector Lebanon" style="height:30px;width:auto;align-self:flex-start"><span class="eyebrow">${esc(WR.cfg.eventName)}</span><strong style="font-size:18px">${esc(me.name)}</strong></div>
       <span class="chip ${teamClass(t.id)}"><span class="team-dot"></span>${esc(t.name)}</span></header>`;
   }
-  const footer = () => `<nav class="foot-links" aria-label="More"><a href="/hunt">Treasure hunt</a><a href="/sap">Site test</a><a href="#" data-act="rejoin">Not ${esc(me.name)}? Join again</a></nav>`;
+  const footer = () => `<nav class="foot-links" aria-label="More">${['badges', 'rooms', 'lake'].some((g) => WR.isLive(st, g)) ? '<a href="/hunt">Treasure hunt</a>' : ''}${WR.isLive(st, 'sap') ? '<a href="/sap">Site test</a>' : ''}<a href="#" data-act="rejoin">Not ${esc(me.name)}? Join again</a></nav>`;
   const waitingCard = (title, text) => `<section class="card" style="text-align:center;padding:32px 18px"><div class="big-msg">${title}</div><p class="muted" style="margin:0">${text}</p></section>`;
 
   function quizLeft() {

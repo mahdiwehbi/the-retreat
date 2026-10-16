@@ -21,7 +21,7 @@
   const app = $('#app');
   if (!WR.configured) { WR.setupNotice(app); return; }
   const code = (new URLSearchParams(location.search).get('c') || '').trim().toUpperCase();
-  let me = null, live = null, card = null, teams = [], photoFile = null, pick = null;
+  let fresh = false, me = null, live = null, card = null, teams = [], photoFile = null, pick = null;
 
   async function start() {
     if (!code) return manual();
@@ -30,8 +30,8 @@
       // A name badge joins its owner straight into the team printed on it.
       try {
         const [b] = await rows('hunt_cards', (q) => q.ilike('code', code));
-        if (b && b.holder && b.team_id) { me = await rpc('badge_checkin', { p_code: b.code }); WR.setMe(me); }
-      } catch (e) {}
+        if (b && b.holder && b.team_id) { me = await rpc('badge_checkin', { p_code: b.code }); WR.setMe(me); fresh = true; }
+      } catch (e) { app.innerHTML = `<section class="card" style="text-align:center"><div class="big-msg">Welcome!</div><p class="notice" style="margin:0">${esc(e.message)}</p></section>`; return; }
     }
     if (!me) return WR.renderJoin(app, (m) => { me = m; load(); });
     load();
@@ -52,6 +52,8 @@
     } catch (e) { app.innerHTML = `<section class="card"><p class="notice bad">${esc(e.message)}</p></section>`; return; }
     if (!card) { app.innerHTML = `<section class="card"><h1 style="font-size:24px">Card not found</h1><p class="muted">The code ${esc(code)} is not part of this game. Check the code on the card.</p><a class="btn" href="/card">Type a code</a></section>`; return; }
     if (card.grp && !WR.isLive(live, card.grp)) {
+      // Badge scanned again by its owner: go to whatever the current session is.
+      if (card.grp === 'badges' && !fresh && me.name === card.holder) { location.replace('/'); return; }
       if (card.grp === 'badges') return welcome();
       app.innerHTML = `<section class="card" style="text-align:center"><div class="eyebrow">Not open yet</div><div class="big-msg">${card.grp === 'rooms' ? 'Welcome!' : 'Patience…'}</div>
         <p style="margin:0">${card.grp === 'rooms' ? 'Your room bonus opens at check-in. Scan it again then.' : card.grp === 'lake' ? 'This clue opens at the lake.' : 'This opens later in the retreat.'}</p><a class="btn primary block" href="/">Open the game</a></section>`;
