@@ -159,7 +159,7 @@
     }
     else if (screen === 'leaderboard') { const qa = acts.filter((x) => x.kind === 'quiz').map((x) => x.id); D.resp = qa.length ? await rows('responses', (q) => q.in('activity_id', qa)) : []; }
     if (screen === 'teams' || screen === 'podium') D.board = await rpc('scoreboard');
-    if (screen === 'hunt') { D.hunt = await rpc('hunt_board'); D.board = await rpc('scoreboard'); }
+    if (screen === 'hunt') { D.hunt = await rpc('hunt_board'); D.board = await rpc('scoreboard'); D.race = (D.st.present && D.st.present.race) ? await rpc('race_result') : null; }
     paint();
   }
 
@@ -318,10 +318,20 @@
 
   function vHunt() {
     const H = D.hunt || { length: 0, teams: [] };
+    const conf = () => `<div class="confetti">${Array.from({ length: 40 }, (_, i) => `<i style="left:${(i * 37) % 100}%;animation-delay:${(i % 10) * .18}s;background:${['#F2B705', '#0A6E78', '#C2410C', '#6D28D9', '#8FD18B'][i % 5]}"></i>`).join('')}</div>`;
+    if (D.race && D.race.word) {
+      const w = D.race.word; const pat0 = String(H.pattern || '').split(',').map(Number).filter(Boolean); let p0 = 0;
+      const tiles = (pat0.length ? pat0 : [w.length]).map((n) => { const g = w.slice(p0, p0 + n); p0 += n; return `<div class="tiles">${[...g].map((c) => `<span class="on" style="background:var(--accent);border-color:var(--accent)">${esc(c)}</span>`).join('')}</div>`; }).join('');
+      const R = (D.race.teams || []).map((r) => ({ ...r, total: r.questions + r.helps + r.crack })).sort((a, b) => b.total - a.total);
+      const best = R[0];
+      return `${conf()}<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Message in a bottle · the result</div><h1 class="ttl">${best ? esc(teamName(best.team_id)) + ' win the word race!' : 'The message'}</h1></div></div>
+        <div style="display:flex;flex-wrap:wrap;gap:.6em 1.4em">${tiles}</div>
+        <div class="lb">${R.map((r, i) => `<div class="lb-row ${teamClass(r.team_id)} ${i === 0 ? 'first' : ''}"><span class="rk">${i + 1}</span><span class="nm">${esc(teamName(r.team_id))} <span class="muted" style="font-size:.55em">questions ${r.questions} · cracking ${r.crack} · helps ${r.helps}</span></span><span class="pt">${r.total}</span></div>`).join('')}</div>`;
+    }
     const pat = String(H.pattern || '').split(',').map(Number).filter(Boolean); const groups = pat.length ? pat : [H.length];
     const winner = H.winner ? D.teams.find((t) => t.id === H.winner) : null;
     const blanks = groups.map((len) => `<div class="tiles">${Array.from({ length: len }, () => '<span></span>').join('')}</div>`).join('');
-    return `<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Message in a bottle · ${H.length} letters</div><h1 class="ttl">${winner ? esc(winner.name) + ' cracked it first!' : 'Crack the message in the bottle'}</h1></div></div>
+    return `${winner ? conf() : ''}<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Message in a bottle · ${H.length} letters${winner ? ' · keep going: the other teams can still crack it' : ''}</div><h1 class="ttl">${winner ? esc(winner.name) + ' cracked it first!' : 'Crack the message in the bottle'}</h1></div></div>
       <div style="display:flex;flex-wrap:wrap;gap:.6em 1.4em">${blanks}</div>
       <div class="hunt">${D.teams.map((t) => { const h = (H.teams || []).find((x) => x.team_id === t.id) || { cards: 0, opened: 0, placed: 0, guesses: 0 }; const solved = (H.solved_teams || []).includes(t.id);
         return `<div class="${teamClass(t.id)}"><div class="hunt-head"><b><span class="team-dot"></span>${esc(t.name)}</b><span class="muted">${h.opened} of ${h.cards} letters opened · ${h.placed} of ${H.length} boxes filled · ${h.guesses} of 5 guesses${solved ? ' · solved' : ''}</span></div>
