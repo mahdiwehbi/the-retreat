@@ -37,7 +37,7 @@ window.WR_SESSIONS = [
   { key: 'd2-breakfast', day: 2, label: 'Day 2 · Breakfast', time: '09:00–10:30', title: 'Morning Mist', sub: 'Tomorrow’s headline', from: 33, to: 33,
     show: ['Write the newspaper headline you want to read about the WASH response one year from now.'],
     host: ['The headlines come back at Chams.'] },
-  { key: 'd2-lake', day: 2, label: 'Day 2 · Taanayel', time: '11:30–13:30', title: 'The Expedition', sub: 'WAP challenge and site test at the lake', from: 0, to: -1, screen: 'hunt', opens: ['lake', 'sap'],
+  { key: 'd2-lake', day: 2, label: 'Day 2 · Taanayel', time: '12:00–13:30', title: 'The Expedition', sub: 'WAP challenge and site test at the lake', from: 0, to: -1, screen: 'hunt', opens: ['lake', 'sap'],
     show: ['Part 1: WAP deck. For each clue, find the right card in your leader’s deck and scan it.', 'Every scan tells you what that card really is.', 'Part 2: site test. Fill the site form and the tent forms for your site.', 'The phone shows what you got wrong, with the WAP rule.'],
     host: ['Reaching this card opens the WAP deck, the field tasks and the site test.', 'Follow progress in Host → Site test (SAP).'] },
   { key: 'd2-debrief', day: 2, label: 'Day 2 · Chams', time: '14:00', title: 'Back to Shore', sub: 'Site test debrief', from: 34, to: 36,

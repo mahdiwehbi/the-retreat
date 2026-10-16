@@ -53,6 +53,13 @@
   .badge .last{font-size:14pt;margin-top:1mm}
   .badge .pill{margin-top:3mm;background:var(--tc);color:#fff;font-weight:700;font-size:11pt;letter-spacing:.04em;padding:1.2mm 6mm;border-radius:99px;text-transform:uppercase}
   .badge .qr img{width:44mm;height:44mm;margin-top:6mm;display:block}
+  .badge.back{align-items:stretch;padding:6mm 7mm 12mm}
+  .badge.back .bhead{display:flex;gap:3mm;align-items:center;border-bottom:0.5mm solid var(--tc);padding-bottom:2mm;margin-bottom:1mm}
+  .badge.back .bhead img{height:8mm}
+  .badge.back .theme{margin:0;font-size:10pt}
+  .badge.back .bday{font-weight:700;font-size:7.5pt;letter-spacing:.06em;text-transform:uppercase;color:var(--tc);margin:2mm 0 .6mm}
+  .badge.back .br{display:grid;grid-template-columns:9mm 1fr;gap:1.5mm;font-size:7.4pt;line-height:1.25;padding:.25mm 1mm;border-radius:.8mm}
+  .badge.back .br.mv{background:#FFE9B8;font-weight:700}
   .badge .roomtag{margin-top:1.5mm;font-weight:700;font-size:11pt;color:var(--tc)}
   .badge .code{font-family:'IBM Plex Mono',monospace;font-size:7pt;color:var(--muted);margin-top:1mm}
   .foot{position:absolute;left:0;bottom:0;width:100%;height:10mm;background:var(--tc);color:#fff;font-weight:700;font-size:8pt;display:flex;align-items:center;justify-content:center;letter-spacing:.06em}
@@ -67,6 +74,10 @@
   .a5 .sub{color:var(--muted);font-size:10pt}
   .a5 .band .row2{display:flex;align-items:center;gap:4mm;flex-wrap:wrap}
   .a5 .roomno{display:inline-block;margin-top:2mm;background:var(--tc);color:#fff;font-weight:700;padding:1mm 4mm;border-radius:99px;font-size:11pt}
+  .a5 .ticks{padding:6mm 9mm 0;display:flex;flex-direction:column;gap:3.2mm}
+  .a5 .ticks .h{font-weight:700;font-size:9pt;letter-spacing:.08em;color:var(--tc)}
+  .a5 .tk{display:flex;gap:4mm;align-items:center;font-size:13pt}
+  .a5 .tk .bx{flex:0 0 6.5mm;height:6.5mm;border:0.6mm solid var(--tc);border-radius:1.2mm;background:#fff}
   .a5 .plan{padding:3mm 8mm 0;display:grid;grid-template-columns:1fr 1fr;gap:5mm;font-size:8.6pt;line-height:1.25}
   .a5 .plan .h{font-weight:700;font-size:8pt;letter-spacing:.08em;color:var(--tc);margin-bottom:1.2mm}
   .a5 .plan .r{display:grid;grid-template-columns:10mm 1fr;margin-bottom:.8mm}
@@ -165,7 +176,14 @@
   const WF = '<svg viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><path d="M0 2 C12 0 25 4 37 2 C50 0 62 4 75 2 C87 0 95 3 100 2 V4 H0 Z" fill="currentColor"/></svg>';
   const sf = (t) => `<div class="sf"><img src="/logo.png" alt="">${esc(t)}</div>`;
 
+  const TICKS = ['Be back at <b>15:00 sharp</b> in the meeting room', 'Be down at <b>17:00 sharp</b> to move to Wadi Chamsine', 'Take your breakfast and <b>check out before 11:00</b>', 'We move at <b>11:30 sharp</b> to Taanayel'];
   const roomOf = (name) => { const h = cards.find((x) => /^H\d/.test(x.code) && x.holder === name); return h ? h.room : ''; };
+  const back = (c) => `<div class="badge back ${tc(c.team_id)}"><div class="bhead"><img src="/logo.png" alt=""><div><div class="theme">AGENDA</div><div class="ev">Times in yellow: be there, we move</div></div></div>
+      ${AGENDA.map(([d, rows]) => `<div class="bday">${esc(d)}</div>${rows.map(([t, x, pl, mv, sh]) => `<div class="br ${mv ? 'mv' : ''}"><b>${esc(t.split('–')[0])}</b><span>${esc(sh || x)}</span></div>`).join('')}`).join('')}
+      <div class="foot"><span style="position:absolute;left:0;top:-3mm;width:100%;height:4mm;color:var(--tc)">${WF}</span>${esc((c.holder || '').toUpperCase())} · ${esc(tname(c.team_id).toUpperCase())}</div></div>`;
+  // Double-sided: A4 backs are mirrored left-right so they line up when the sheet flips on the long edge.
+  const duplexA4 = (list) => chunk(list, 4).map((g) => { const b = g.slice(); while (b.length < 4) b.push(null); const m = [b[1], b[0], b[3], b[2]];
+    return `<section class="sheet a4 badges">${g.map(badge).join('')}</section><section class="sheet a4 badges">${m.map((c) => c ? back(c) : '<div></div>').join('')}</section>`; }).join('');
   const badge = (c) => { const [f, ...l] = (c.holder || '______').split(' ');
     return `<div class="badge ${tc(c.team_id)}"><div class="band">${W}</div><img class="logo" src="/logo-t.png" alt="WaSH Sector Lebanon"><div class="theme">WHERE THE WATERS MEET</div><div class="ev">WASH Sector Coordination Team Retreat</div>
       <div class="first">${esc(f)}</div><div class="last">${esc(l.join(' '))}</div><div class="pill">${esc(tname(c.team_id))}</div>
@@ -173,7 +191,7 @@
       <div class="foot" style="color:#fff"><span style="position:absolute;left:0;top:-3mm;width:100%;height:4mm;color:var(--tc)">${WF}</span>22–23 OCTOBER 2026</div></div>`; };
   const bed = (c) => `<div class="a5 ${tc(c.team_id)}"><div class="left"><div class="band"><img class="logo" src="/logo-t.png" alt="WaSH Sector Lebanon"><div class="theme">WHERE THE WATERS MEET · SAFE HARBOUR</div>
       <h1>Welcome, ${esc((c.holder || 'friend').split(' ')[0])}!</h1><div class="row2"><div class="sub">This room is your safe harbour for tonight.</div>${c.room ? `<div class="roomno">Room ${esc(c.room)}</div>` : ''}</div>${W}</div>
-      <div class="plan">${AGENDA.map(([d, rows]) => `<div class="day"><div class="h">${esc(d.toUpperCase())}</div>${rows.map(([t, x, pl, mv, sh]) => `<div class="r ${mv ? 'mv' : ''}"><b>${esc(t.split('–')[0])}</b><span>${esc(sh || x)}</span></div>`).join('')}</div>`).join('')}</div></div>
+      <div class="ticks"><div class="h">PLEASE TICK WHEN DONE</div>${TICKS.map((x) => `<div class="tk"><span class="bx"></span><span>${x}</span></div>`).join('')}</div></div>
       <div class="right"><div class="msg">A message washed up in your room…</div><div class="qr"><img src="${qr(O + '/card?c=' + encodeURIComponent(c.code))}" alt="QR code"></div><div class="how">Scan it and answer:<br>2 points for the ${esc(tname(c.team_id))}.</div><div class="code">${esc(c.code)}</div></div>
       <div class="foot"><span style="position:absolute;left:0;top:-3mm;width:100%;height:4mm;color:var(--tc)">${WF}</span>DAY 1 · ROOM WELCOME · ${esc(tname(c.team_id).toUpperCase())} · 22–23 OCTOBER 2026</div></div>`;
   const chunk = (a, n) => { const r = []; for (let i = 0; i < a.length; i += n) r.push(a.slice(i, i + n)); return r; };
@@ -195,8 +213,9 @@
       ['21:30', 'Drive back to the hotel · free evening', 'Wadi Chamsine → Hotel', 1, 'Drive back to the hotel']]],
     ['Day 2 · Friday 23 October', [
       ['09:00–10:30', 'Breakfast · Morning Mist', 'Hotel', 1, 'Breakfast, until 10:30'],
-      ['11:00', 'Checked out, bags in the cars · gather at the hotel entrance · drive to Taanayel Lake', 'Hotel entrance', 1, 'Checked out, bags in cars · drive to the lake'],
-      ['11:30–13:30', 'The Expedition · WAP challenge and site test', 'Taanayel Lake', 0, 'The Expedition'],
+      ['11:00', 'Breakfast done and checked out', 'Hotel', 1, 'Checked out, bags in the cars'],
+      ['11:30', 'Gather at the hotel entrance · drive to Taanayel Lake', 'Hotel entrance', 1, 'Move to Taanayel Lake'],
+      ['12:00–13:30', 'The Expedition · WAP challenge and site test', 'Taanayel Lake', 0, 'The Expedition'],
       ['13:30', 'Gather at the cars · drive to Chams', 'Taanayel Lake', 1, 'Gather at the cars · drive to Chams'],
       ['14:00–16:00', 'Back to Shore · Ripples · lunch, bowling, awards and closing', 'Chams', 0, 'Lunch, bowling, awards'],
       ['16:00', 'Departure home', 'Chams', 1, 'Departure home']]]];
@@ -206,13 +225,12 @@
     <div class="row small" style="margin-top:4mm;gap:6mm"><span><span class="key"></span> Be there, or we move: times to watch</span><span>Contact: Dr. Mahdi Wehbi, 70319729</span></div></div></section>`;
   const SCEN = [['A', 'Renewed escalation', 'Mass displacement in 48 hours. Collective shelters reopen across the country.'], ['B', 'Protracted crisis', 'Funding is cut by half and partners are leaving.'], ['C', 'Return and recovery', 'People go home to damaged water networks.']];
   const ITEMS = [
-    { k: 'badges', t: 'Name badges', n: () => badges().length + ' badges', size: '100 × 135 mm', modes: [['sheet', 'Badge paper 100 × 135'], ['a4', 'A4, 4 per sheet']],
-      render: (m) => m === 'a4' ? a4(badges(), 4, badge, 'badges') : badges().map((c) => `<section class="sheet solo-badge">${badge(c)}</section>`).join(''),
-      page: (m) => m === 'a4' ? 'A4' : '100mm 135mm', hint: (m) => m === 'a4' ? 'Print at 100% (no "fit to page"), then cut.' : 'Pick the 100 × 135 mm paper size in the print dialog.' },
+    { k: 'badges', t: 'Name badges', n: () => badges().length + ' badges, agenda on the back', size: '100 × 135 mm, double-sided', modes: [['sheet', 'Badge paper 100 × 135'], ['a4', 'A4, 4 per sheet']],
+      render: (m) => m === 'a4' ? duplexA4(badges()) : badges().map((c) => `<section class="sheet solo-badge">${badge(c)}</section><section class="sheet solo-badge">${back(c)}</section>`).join(''),
+      page: (m) => m === 'a4' ? 'A4' : '100mm 135mm', hint: (m) => m === 'a4' ? 'Double-sided, flip on the long edge, at 100% (no "fit to page"). Then cut.' : 'Double-sided, 100 × 135 mm paper: front, then the agenda on the back.' },
     { k: 'beds', t: 'Room welcome cards', n: () => beds().length + ' cards, one per overnight guest', size: 'A5 landscape', modes: [['a5', 'A5 paper'], ['a4', 'A4, 2 per sheet']],
       render: (m) => m === 'a4' ? a4(beds(), 2, bed, 'a5x2') : beds().map((c) => `<section class="sheet solo-a5">${bed(c)}</section>`).join(''),
       page: (m) => m === 'a4' ? 'A4' : 'A5 landscape', hint: (m) => m === 'a4' ? 'Print at 100%, then cut across the middle.' : 'Pick A5, landscape, in the print dialog.' },
-    { k: 'agenda', t: 'Participant agenda', n: () => '1 page, one per person (18), with the times to be ready or to move highlighted', size: 'A4', render: agendaSheet },
     { k: 'poster', t: 'Join poster', n: () => '1 poster (for latecomers without a badge)', size: 'A4',
       render: () => `<section class="sheet a4 one"><div class="poster"><img src="/logo.png" alt="WaSH Sector Lebanon" style="height:22mm"><div class="card" style="border:0"><div class="top">Where the Waters Meet</div></div><h1>Scan your badge<br>or this code</h1><div class="qr"><img src="${qr(O + '/')}" alt="QR code to join"></div><div class="url">${esc(host)}</div></div></section>` },
     { k: 'scen', t: 'Flood Watch scenario cards', n: () => '3 cards (A, B, C), to seal in envelopes', size: 'A4',
