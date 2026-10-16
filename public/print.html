@@ -44,6 +44,7 @@
   <strong>Print</strong>
   <label for="s-poster"><input id="s-poster" type="checkbox" data-s="poster" checked> Join poster</label>
   <label for="s-rooms"><input id="s-rooms" type="checkbox" data-s="rooms" checked> Name badges (Day 1)</label>
+  <label for="s-beds"><input id="s-beds" type="checkbox" data-s="beds" checked> Room welcome cards (Day 1)</label>
   <label for="s-spots"><input id="s-spots" type="checkbox" data-s="spots" checked> WAP decks (1 per team leader)</label>
   <label for="s-sites"><input id="s-sites" type="checkbox" data-s="sites" checked> Site cards (shawish)</label>
   <label for="s-tents"><input id="s-tents" type="checkbox" data-s="tents" checked> Tent cards</label>
@@ -79,6 +80,11 @@
     rooms: () => pages(cards.filter((c) => /^R\d/.test(c.code)), 6, '', (c) => `<div class="card ${c.team_id ? 'tc' + ((c.team_id - 1) % 3 + 1) : ''}" style="${c.team_id ? 'border-color:var(--tc)' : ''}"><div class="top" style="${c.team_id ? 'color:var(--tc)' : ''}">${c.team_id ? esc(tname(c.team_id)) : 'WASH Retreat'}</div><div class="room" style="border:0;font-size:20pt">${c.holder ? esc(c.holder) : '______________'}</div>
       <div class="qr"><img src="${qr(O + '/card?c=' + encodeURIComponent(c.code))}" alt="QR code for ${esc(c.code)}"></div><div class="code" style="font-size:10pt">${esc(c.code)}</div>
       <div class="sf">WASH Coordination Team Retreat · 22–23 Oct 2026</div></div>`),
+    beds: () => pages(cards.filter((c) => /^H\d/.test(c.code)), 4, '', (c) => `<div class="card ${c.team_id ? 'tc' + ((c.team_id - 1) % 3 + 1) : ''}" style="${c.team_id ? 'border-color:var(--tc)' : ''}"><div class="top" style="${c.team_id ? 'color:var(--tc)' : ''}">WASH Sector Coordination Team Retreat</div>
+      <div class="room" style="border:0;font-size:18pt">Welcome, ${esc((c.holder || '').split(' ')[0] || 'friend')}!</div>
+      <div class="how" style="font-size:10pt;line-height:1.4">Rest well. At 17:00 we drive to Wadi Chamsine: ATV at sunset, then dinner together.<br>Bonus: scan the code and answer. A right answer gives ${esc(tname(c.team_id))} 2 points.</div>
+      <div class="qr"><img src="${qr(O + '/card?c=' + encodeURIComponent(c.code))}" alt="QR code for ${esc(c.code)}"></div><div class="code" style="font-size:10pt">${esc(c.code)}</div>
+      <div class="sf">Day 1 · Room welcome card · ${esc(c.holder || '')}</div></div>`),
     spots: () => teams.map((t) => pages(spots, 6, '', (s) => `<div class="card"><div class="top">${esc(tname(t.id))} deck · ${esc(s.grp)}</div><div class="big">${esc(s.title)}</div>
       <div class="desc">${esc(s.description)}</div><div class="qr"><img src="${qr(O + '/spot?c=' + encodeURIComponent(s.code))}" alt="QR code for ${esc(s.code)}"></div><div class="how">Card ${esc(s.code)} · scan only if it answers one of your clues</div><div class="sf">Day 2 · Taanayel · WAP challenge (part 1)</div></div>`)).join(''),
     sites: () => pages(teams, 1, 'one', (t) => `<div class="site tc${(t.id - 1) % 3 + 1}"><div class="top">WASH SAP test · site card</div><h2>${esc(tname(t.id))} · Site ${t.id}</h2>

@@ -74,7 +74,7 @@
         </section>`;
       })()}
       ${(() => {
-        const rooms = cards.filter((c) => /^R\d/.test(c.code) && (c.team_id == null || c.team_id === me.team_id)); const lake = cards.filter((c) => !/^R\d/.test(c.code));
+        const rooms = cards.filter((c) => /^R\d/.test(c.code) && (c.team_id == null || c.team_id === me.team_id)); const lake = cards.filter((c) => !/^[RH]\d/.test(c.code)); const beds = cards.filter((c) => /^H\d/.test(c.code) && c.team_id === me.team_id);
         const roomsHtml = rooms.length && raceLive ? `<section class="card"><strong>Day 1 · Your team's cards</strong><p class="small" style="margin:0">Everyone has a card with their name on it. Scan it and answer: its 2 letters go to your team. You can retry until you get it right.</p>
           <div class="tiles">${rooms.map((c) => { const m = byId.get(c.id) || {}; return `<span class="${m.solved ? 'on' : ''}" title="${esc(c.code)}" style="${!m.solved && m.wrong >= 3 ? 'opacity:.4' : ''}">${m.solved ? esc((m.letter || '') + (m.letter2 || '') || '✓') : esc(c.holder || '·')}</span>`; }).join('')}</div>
           <span class="how">${rooms.filter((c) => (byId.get(c.id) || {}).solved).length} of ${rooms.length} cards done</span></section>` : '';
@@ -82,7 +82,11 @@
           <div class="stack">${lake.map((c, i) => { const m = byId.get(c.id) || {}; const done = m.solved; const locked = !done && m.wrong >= 3;
             const inner = `<span class="st">${done ? '✓' : i + 1}</span><span class="stack" style="gap:4px"><p><strong>${esc(c.prompt)}</strong></p><span class="how">${done ? 'Solved' : locked ? 'Locked: 3 tries used' : how[c.kind] || ''}${!done && !locked && m.wrong ? ` · ${3 - m.wrong} ${3 - m.wrong === 1 ? 'try' : 'tries'} left` : ''} · ${c.points} pt${c.points === 1 ? '' : 's'}</span></span>`;
             return c.kind === 'find' || done || locked ? `<div class="clue ${done ? 'done' : ''} ${c.golden ? 'gold' : ''}">${inner}</div>` : `<a class="clue ${c.golden ? 'gold' : ''}" href="/card?c=${encodeURIComponent(c.code)}">${inner}</a>`; }).join('')}</div>` : '';
-        return roomsHtml + lakeHtml;
+        const bedsHtml = beds.length ? `<section class="card"><strong>Room bonus cards</strong><p class="small" style="margin:0">Each room has a welcome card with a bonus question: 2 points for your team.</p>
+          <div class="stack">${beds.map((c) => { const m = byId.get(c.id) || {}; const done = m.solved; const locked = !done && m.wrong >= 3;
+            const inner = `<span class="st">${done ? '✓' : '·'}</span><span class="stack" style="gap:4px"><p><strong>${esc(c.holder)}'s room</strong></p><span class="how">${done ? 'Solved' : locked ? 'Locked: 3 tries used' : 'Scan the card on the bed'}</span></span>`;
+            return `<div class="clue ${done ? 'done' : ''}">${inner}</div>`; }).join('')}</div></section>` : '';
+        return roomsHtml + bedsHtml + lakeHtml;
       })()}
       <nav class="foot-links"><a href="/">Back to the game</a><a href="/spot">Type a card code</a></nav>`;
   }
