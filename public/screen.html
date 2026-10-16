@@ -263,10 +263,14 @@
 
   function vHunt() {
     const H = D.hunt || { length: 0, cards: 0, teams: [] };
-    return `<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Treasure hunt · ${H.cards} cards hidden</div><h1 class="ttl">Find the secret word</h1></div></div>
-      <div class="hunt">${D.teams.map((t) => { const h = (H.teams || []).find((x) => x.team_id === t.id) || { found: 0, letters: [] }; const got = new Map((h.letters || []).map((x) => [x.i, x.l]));
-        return `<div class="${teamClass(t.id)}"><div class="hunt-head"><b><span class="team-dot"></span>${esc(t.name)}</b><span class="muted">${h.found} of ${H.cards} cards</span></div>
-        <div class="tiles">${Array.from({ length: H.length }, (_, i) => `<span class="${got.has(i) ? 'on' : ''}">${got.has(i) ? esc(got.get(i)) : ''}</span>`).join('')}</div></div>`; }).join('')}</div>`;
+    const pat = String(H.pattern || '').split(',').map(Number).filter(Boolean); const groups = pat.length ? pat : [H.length];
+    const winner = H.winner ? D.teams.find((t) => t.id === H.winner) : null;
+    const blanks = groups.map((len) => `<div class="tiles">${Array.from({ length: len }, () => '<span></span>').join('')}</div>`).join('');
+    return `<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Word race · ${H.cards} room cards</div><h1 class="ttl">${winner ? esc(winner.name) + ' cracked it first!' : 'Crack the secret phrase'}</h1></div></div>
+      <div style="display:flex;flex-wrap:wrap;gap:.6em 1.4em">${blanks}</div>
+      <div class="hunt">${D.teams.map((t) => { const h = (H.teams || []).find((x) => x.team_id === t.id) || { found: 0, guesses: 0 }; const solved = (H.solved_teams || []).includes(t.id);
+        return `<div class="${teamClass(t.id)}"><div class="hunt-head"><b><span class="team-dot"></span>${esc(t.name)}</b><span class="muted">${h.found} letters · ${h.guesses} of 5 guesses used${solved ? ' · solved' : ''}</span></div>
+        <div class="tiles">${Array.from({ length: h.found }, () => '<span class="on">•</span>').join('')}</div></div>`; }).join('')}</div>`;
   }
 
   function paint() {

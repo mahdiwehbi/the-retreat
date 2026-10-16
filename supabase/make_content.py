@@ -176,13 +176,19 @@ for k, (kind, prompt, options, answer) in enumerate(ROOMS):
     card(f'R{k + 1:02d}', kind, prompt, answer, options, letter=k)
 
 # ---------------- Hunt: Day 2 lake, WAP explorer (points, no letters) ----------------
-card('W1', 'find', 'WAP explorer: find the CESSPIT among the blackwater cards and scan it.', s_cess, points=2)
-card('W2', 'find', 'WAP explorer: find the HOLDING TANK.', s_hold, points=2)
-card('W3', 'find', 'WAP explorer: find the SEPTIC TANK.', s_septic, points=2)
-card('W4', 'find', 'WAP explorer: find the disposal WAP calls "above ground".', s_above, points=2)
-card('W5', 'find', 'WAP explorer: find a PROTECTED SPRING.', s_prot_spring, points=2)
-card('W6', 'find', 'WAP explorer: find the UNPROTECTED BOREHOLE.', s_unprot_bh, points=2)
-card('W7', 'find', 'WAP explorer: find a latrine WAP counts as IMPROVED AND USABLE (two cards are right).', s_lat_ok1 + '|' + s_lat_ok2, points=2)
+card('W1', 'find', "WAP deck: find the CESSPIT card in your team leader's deck and scan it.", s_cess, points=2)
+card('W2', 'find', 'WAP deck: find the HOLDING TANK.', s_hold, points=2)
+card('W3', 'find', 'WAP deck: find the SEPTIC TANK.', s_septic, points=2)
+card('W4', 'find', 'WAP deck: find the disposal WAP calls "above ground".', s_above, points=2)
+card('W5', 'find', 'WAP deck: find a PROTECTED SPRING.', s_prot_spring, points=2)
+card('W6', 'find', 'WAP deck: find the UNPROTECTED BOREHOLE.', s_unprot_bh, points=2)
+card('W7', 'find', 'WAP deck: find a latrine card that WAP counts as IMPROVED AND USABLE (two are right).', s_lat_ok1 + '|' + s_lat_ok2, points=2)
+for code, prompt in [
+    ('F1', 'Field task: find the nearest water point at the lake. Take a photo, and in the caption write which source card (B1–B6) describes it.'),
+    ('F2', 'Field task: find a toilet at the lake. Photo, and in the caption: which latrine card (C1–C4) matches it, and why.'),
+    ('F3', 'Field task: follow where a sink or toilet drains. Photo, and in the caption: which disposal card (A1–A8) it is.'),
+    ('F4', 'Field task: count the bins you can see from your picnic spot. Photo, with the number in the caption (WAP M.1–M.8).')]:
+    card(code, 'photo', prompt, points=2)
 card('G1', 'photo', 'Golden card: a team photo that shows a real WASH risk around the lake.', points=3, golden=True)
 card('G2', 'photo', 'Golden card: leaky-cup relay. Photo of your team with the filled bottle.', points=3, golden=True)
 

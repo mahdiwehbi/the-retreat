@@ -72,7 +72,7 @@
         <h1 style="font-size:24px;white-space:pre-line">${esc(card.prompt)}</h1>
         ${resultHtml || ''}
         <form id="cf" class="stack">${form}<button class="btn primary block" type="submit">Submit for ${esc(teamName())}</button></form>
-        <p class="muted small" style="margin:0">Your team has 3 tries per card. One correct answer counts for the whole team.</p>
+        <p class="muted small" style="margin:0">${card.letter_index != null ? 'Get it right to win this letter for your team. You can try again.' : 'Your team has 3 tries per card. One correct answer counts for the whole team.'}</p>
       </section>
       <nav class="foot-links"><a href="/hunt">All clues</a><a href="/">Back to the game</a><a href="/card">Type another code</a></nav>`;
     if (photoFile) { const r = new FileReader(); r.onload = () => { const p = $('#prev'); if (p) { p.src = r.result; p.hidden = false; } }; r.readAsDataURL(photoFile); }
@@ -82,7 +82,7 @@
     const t = teamClass(me.team_id);
     if (res.status === 'correct' || res.status === 'already') {
       const letter = res.letter
-        ? `<div class="${t}"><div class="letter-tile">${esc(res.letter)}</div></div><p style="text-align:center;margin:0">Letter number ${Number(res.position) + 1} of the secret word</p>`
+        ? `<div class="${t}"><div class="letter-tile">${esc(res.letter)}</div></div><p style="text-align:center;margin:0">Letter ${Number(res.position) + 1} of the secret phrase. Keep it for your team!</p>`
         : '';
       app.innerHTML = `<section class="card" style="text-align:center">
         <div class="big-msg">${res.status === 'correct' ? 'Well done!' : 'Already found'}</div>
@@ -95,7 +95,7 @@
       app.innerHTML = `<section class="card"><div class="big-msg">Card locked</div><p class="muted">Your team used its 3 tries on this card. Find the next one.</p><a class="btn primary block" href="/">Back to the game</a></section>`;
       return;
     }
-    render(`<p class="notice bad">Not quite. ${res.left > 0 ? `${res.left} ${res.left === 1 ? 'try' : 'tries'} left for your team.` : ''}</p>`);
+    render(`<p class="notice bad">Not quite. ${res.left >= 99 ? 'Try again.' : res.left > 0 ? `${res.left} ${res.left === 1 ? 'try' : 'tries'} left for your team.` : ''}</p>`);
   }
 
   app.addEventListener('click', (e) => {

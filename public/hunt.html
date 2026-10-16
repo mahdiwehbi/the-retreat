@@ -32,18 +32,19 @@
   const { $, esc, teamClass, rpc, rows, live } = WR;
   const app = $('#app');
   if (!WR.configured) { WR.setupNotice(app); return; }
-  let me = null, cards = [], mine = [], teams = [], secretLen = 0;
+  let me = null, cards = [], mine = [], teams = [], secretLen = 0, board = {}, solvedWord = null;
 
   async function start() {
     try { me = await WR.checkMe(); } catch (e) { me = WR.getMe(); }
     if (!me) return WR.renderJoin(app, (m) => { me = m; go(); });
     go();
   }
-  function go() { live(['hunt_cards', 'teams'], refresh, 5000); }
+  function go() { live(['hunt_cards', 'teams', 'team_points'], refresh, 5000); }
 
   async function refresh() {
     const [c, t, b] = await Promise.all([rows('hunt_cards', (q) => q.order('position').order('code')), rows('teams', (q) => q.order('id')), rpc('hunt_board')]);
-    cards = c; teams = t; secretLen = b.length || 0;
+    cards = c; teams = t; secretLen = b.length || 0; board = b;
+    try { solvedWord = await rpc('hunt_reveal', { p_pid: me.id, p_token: me.token }); } catch (e) {}
     try { mine = await rpc('hunt_my_team', { p_pid: me.id, p_token: me.token }); } catch (e) { if (/join again/i.test(e.message)) { WR.setMe(null); location.reload(); } }
     render();
   }
@@ -51,20 +52,30 @@
   function render() {
     const byId = new Map(mine.map((x) => [x.id, x]));
     const letters = new Map(); cards.forEach((c) => { const m = byId.get(c.id); if (m && m.letter && c.letter_index != null) letters.set(c.letter_index, m.letter); });
-    const solved = mine.filter((x) => x.solved).length;
+    
     const team = teams.find((t) => t.id === me.team_id) || { name: 'Your team' };
     const how = { find: 'Find the matching card around the lake and scan its QR code.', text: 'Tap to answer.', quiz: 'Tap to answer.', photo: 'Tap to send a photo.' };
     app.innerHTML = `
       <header class="spread"><span class="eyebrow">Treasure hunt</span><span class="chip ${teamClass(me.team_id)}"><span class="team-dot"></span>${esc(team.name)}</span></header>
-      <section class="card ${teamClass(me.team_id)}"><h1 style="font-size:26px">The secret word</h1>
-        <div class="tiles">${Array.from({ length: secretLen }, (_, i) => `<span class="${letters.has(i) ? 'on' : ''}">${letters.has(i) ? esc(letters.get(i)) : ''}</span>`).join('')}</div>
-        <p class="muted small" style="margin:0">${solved} of ${cards.length} clues solved. Every room card unlocks one letter. Your team has 3 tries per card.</p></section>
+      ${(() => {
+        const pat = String(board.pattern || '').split(',').map(Number).filter(Boolean);
+        const groups = pat.length ? pat : [secretLen]; let pos = 0;
+        const tiles = groups.map((len) => { const g = Array.from({ length: len }, (_, k) => { const i = pos + k; const l = solvedWord ? solvedWord[i] : letters.get(i); return `<span class="${l ? 'on' : ''}">${l ? esc(l) : ''}</span>`; }).join(''); pos += len; return `<div class="tiles">${g}</div>`; }).join('');
+        const won = board.winner; const mineSolved = (board.solved_teams || []).includes(me.team_id);
+        const myRow = (board.teams || []).find((x) => x.team_id === me.team_id) || {}; const left = 5 - (myRow.guesses || 0);
+        return `<section class="card ${teamClass(me.team_id)}"><h1 style="font-size:26px">The secret phrase</h1>
+          <div class="stack" style="gap:8px;flex-direction:row;flex-wrap:wrap;column-gap:18px">${tiles}</div>
+          <p class="muted small" style="margin:0">Your team has ${letters.size} of ${secretLen} letters. Other teams hold the rest: talk, trade or guess.</p>
+          ${won ? `<p class="notice ${won === me.team_id ? 'good' : ''}"><strong>${esc((teams.find((t) => t.id === won) || {}).name || '')}</strong> cracked it first!</p>` : ''}
+          ${mineSolved ? '<p class="notice good">Your team solved it.</p>' : left > 0 ? `<form id="gf" class="row"><input id="guess" maxlength="60" autocomplete="off" aria-label="Your team's guess" placeholder="Guess the phrase" style="flex:1 1 180px"><button class="btn primary">Guess</button></form><span class="how">${left} ${left === 1 ? 'guess' : 'guesses'} left for your team. First right guess: +10 points.</span>` : '<p class="notice">Your team used its 5 guesses.</p>'}
+        </section>`;
+      })()}
       ${(() => {
         const rooms = cards.filter((c) => /^R\d/.test(c.code)); const lake = cards.filter((c) => !/^R\d/.test(c.code));
-        const roomsHtml = rooms.length ? `<section class="card"><strong>Day 1 · Hotel rooms</strong><p class="small" style="margin:0">A card with a QR code hangs on every room door. Scan it, answer as a team, and win that room's letter.</p>
+        const roomsHtml = rooms.length ? `<section class="card"><strong>Day 1 · Your room card</strong><p class="small" style="margin:0">A card is hidden in your hotel room. Find it, scan it and answer: its letter goes to your team. You can retry until you get it right.</p>
           <div class="tiles">${rooms.map((c) => { const m = byId.get(c.id) || {}; return `<span class="${m.solved ? 'on' : ''}" title="${esc(c.code)}" style="${!m.solved && m.wrong >= 3 ? 'opacity:.4' : ''}">${m.solved ? esc(m.letter || '✓') : '·'}</span>`; }).join('')}</div>
           <span class="how">${rooms.filter((c) => (byId.get(c.id) || {}).solved).length} of ${rooms.length} rooms done</span></section>` : '';
-        const lakeHtml = lake.length ? `<section class="card"><strong>Day 2 · WAP explorer at the lake</strong><p class="small" style="margin:0">Cards around the lake describe latrines, water sources and wastewater disposal. Only some match a clue. Read, use the WAP definitions, then scan. A wrong scan uses one of your 3 tries.</p></section>
+        const lakeHtml = lake.length ? `<section class="card"><strong>Day 2 · WAP at the lake</strong><p class="small" style="margin:0">Your team leader holds the WAP deck: cards that describe latrines, water sources and wastewater disposal without naming them. For each clue, pick the right card and scan it. A wrong scan uses one of your 3 tries. Field tasks need a photo.</p></section>
           <div class="stack">${lake.map((c, i) => { const m = byId.get(c.id) || {}; const done = m.solved; const locked = !done && m.wrong >= 3;
             const inner = `<span class="st">${done ? '✓' : i + 1}</span><span class="stack" style="gap:4px"><p><strong>${esc(c.prompt)}</strong></p><span class="how">${done ? 'Solved' : locked ? 'Locked: 3 tries used' : how[c.kind] || ''}${!done && !locked && m.wrong ? ` · ${3 - m.wrong} ${3 - m.wrong === 1 ? 'try' : 'tries'} left` : ''} · ${c.points} pt${c.points === 1 ? '' : 's'}</span></span>`;
             return c.kind === 'find' || done || locked ? `<div class="clue ${done ? 'done' : ''} ${c.golden ? 'gold' : ''}">${inner}</div>` : `<a class="clue ${c.golden ? 'gold' : ''}" href="/card?c=${encodeURIComponent(c.code)}">${inner}</a>`; }).join('')}</div>` : '';
@@ -72,6 +83,15 @@
       })()}
       <nav class="foot-links"><a href="/">Back to the game</a><a href="/spot">Type a card code</a></nav>`;
   }
+  app.addEventListener('submit', async (e) => {
+    if (e.target.id !== 'gf') return; e.preventDefault();
+    const g = $('#guess').value.trim(); if (!g) return;
+    try {
+      const r = await rpc('hunt_guess', { p_pid: me.id, p_token: me.token, p_guess: g });
+      WR.toast(r.status === 'correct' ? (r.first ? 'You cracked it first! +10 points' : 'Right! +5 points') : r.status === 'out' ? 'No guesses left' : 'Not the phrase. ' + r.left + ' left', 4000);
+      refresh();
+    } catch (ex) { WR.toast(ex.message, 4000); }
+  });
   start();
 })();
 </script>
