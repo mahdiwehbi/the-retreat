@@ -42,7 +42,7 @@
 <div class="bar">
   <strong>Print</strong>
   <label for="s-poster"><input id="s-poster" type="checkbox" data-s="poster" checked> Join poster</label>
-  <label for="s-rooms"><input id="s-rooms" type="checkbox" data-s="rooms" checked> Room cards (Day 1)</label>
+  <label for="s-rooms"><input id="s-rooms" type="checkbox" data-s="rooms" checked> Person cards (Day 1)</label>
   <label for="s-spots"><input id="s-spots" type="checkbox" data-s="spots" checked> WAP decks (1 per team leader)</label>
   <label for="s-sites"><input id="s-sites" type="checkbox" data-s="sites" checked> Site cards (shawish)</label>
   <label for="s-tents"><input id="s-tents" type="checkbox" data-s="tents" checked> Tent cards</label>
@@ -75,9 +75,9 @@
 
   const S = {
     poster: () => `<section class="page one"><div class="poster"><div class="top">${esc(WR.cfg.eventName)}</div><h1>Scan to join the game</h1><div class="qr"><img src="${qr(O + '/')}" alt="QR code to join"></div><div class="url">${esc(host)}</div></div></section>`,
-    rooms: () => pages(cards.filter((c) => /^R\d/.test(c.code)), 6, '', (c) => `<div class="card"><div class="top">Treasure hunt · Day 1</div><div class="room">Room ______</div><div class="how">You found your room card!</div>
+    rooms: () => pages(cards.filter((c) => /^R\d/.test(c.code)), 6, '', (c) => `<div class="card ${c.team_id ? 'tc' + ((c.team_id - 1) % 3 + 1) : ''}" style="${c.team_id ? 'border-color:var(--tc)' : ''}"><div class="top" style="${c.team_id ? 'color:var(--tc)' : ''}">Treasure hunt · Day 1${c.team_id ? ' · ' + esc(tname(c.team_id)) : ''}</div><div class="room">For: ${c.holder ? esc(c.holder) : '______________'}</div><div class="how">This card is yours!</div>
       <div class="qr"><img src="${qr(O + '/card?c=' + encodeURIComponent(c.code))}" alt="QR code for ${esc(c.code)}"></div><div class="code">${esc(c.code)}</div>
-      <div class="how">Scan with your phone and answer. The letter goes to your team. Keep it secret!</div></div>`),
+      <div class="how">Scan with your phone and answer. Your 2 letters go to your team. Keep them secret!</div></div>`),
     spots: () => teams.map((t) => pages(spots, 6, '', (s) => `<div class="card"><div class="top">${esc(tname(t.id))} deck · ${esc(s.grp)}</div><div class="big">${esc(s.title)}</div>
       <div class="desc">${esc(s.description)}</div><div class="qr"><img src="${qr(O + '/spot?c=' + encodeURIComponent(s.code))}" alt="QR code for ${esc(s.code)}"></div><div class="how">Card ${esc(s.code)} · scan only if it answers one of your clues</div></div>`)).join(''),
     sites: () => pages(teams, 1, 'one', (t) => `<div class="site tc${(t.id - 1) % 3 + 1}"><div class="top">WASH SAP test · site card</div><h2>${esc(tname(t.id))} · Site ${t.id}</h2>

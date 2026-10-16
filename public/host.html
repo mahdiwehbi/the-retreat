@@ -89,7 +89,7 @@
     paintHeader();
   }
   async function loadKeys() { D.keys = (await act('host_keys')) || {}; }
-  async function loadCards() { const r = await act('host_cards'); D.cards = r.cards || []; D.secret = r.secret || ''; }
+  async function loadCards() { const r = await act('host_cards'); D.cards = r.cards || []; D.secret = r.secret || ''; try { D.pattern = (await rpc('hunt_board')).pattern || ''; } catch (e) { D.pattern = ''; } }
 
   /* ---------- shell ---------- */
   function boot() {
@@ -230,7 +230,7 @@
   /* ---------- Hunt ---------- */
   function tHunt() {
     const C = D.cards || [];
-    const ed = (c) => `<details class="ed" data-cid="${c.id}"><summary>${c.golden ? '<span class="badge" style="color:var(--gold)">Golden</span>' : ''}<span class="badge">${({ text: 'Answer', quiz: 'Multiple choice', photo: 'Photo task', find: 'Find the card' })[c.kind]}</span><code>${esc(c.code)}</code> ${esc((c.prompt || '').slice(0, 70))}${c.letter_index != null && D.secret[c.letter_index] ? ` · letter <strong>${esc(D.secret[c.letter_index])}</strong>` : ''}</summary>
+    const ed = (c) => `<details class="ed" data-cid="${c.id}"><summary>${c.golden ? '<span class="badge" style="color:var(--gold)">Golden</span>' : ''}<span class="badge">${({ text: 'Answer', quiz: 'Multiple choice', photo: 'Photo task', find: 'Find the card' })[c.kind]}</span><code>${esc(c.code)}</code> ${esc((c.prompt || '').slice(0, 70))}${c.letter_index != null && D.secret[c.letter_index] ? ` · letters <strong>${esc(D.secret[c.letter_index] + (c.letter_index2 != null ? D.secret[c.letter_index2] || '' : ''))}</strong>` : ''}${c.holder ? ' · for ' + esc(c.holder) : ''}</summary>
       <form class="ed-body" data-form="card" data-id="${c.id}">
         <label class="field full" for="cp-${c.id}">Question or task<textarea id="cp-${c.id}" name="prompt" rows="3">${esc(c.prompt)}</textarea></label>
         <label class="field" for="ck-${c.id}">Type<select id="ck-${c.id}" name="kind"><option value="text" ${c.kind === 'text' ? 'selected' : ''}>Typed answer</option><option value="quiz" ${c.kind === 'quiz' ? 'selected' : ''}>Multiple choice</option><option value="photo" ${c.kind === 'photo' ? 'selected' : ''}>Photo task</option><option value="find" ${c.kind === 'find' ? 'selected' : ''}>Find the right WAP card</option></select></label>
@@ -240,13 +240,20 @@
           : c.kind === 'find' ? `<label class="field full" for="ca-${c.id}">Right card codes, separated by | (see the WAP cards list below)<input id="ca-${c.id}" name="answer" value="${esc(c.answer)}" placeholder="A5"></label>`
           : c.kind === 'text' ? `<label class="field full" for="ca-${c.id}">Accepted answers, separated by | (empty = any answer)<input id="ca-${c.id}" name="answer" value="${esc(c.answer)}" placeholder="Litani|Litani river"></label>` : '<p class="muted small full" style="margin:0">Any photo completes this card. Check the photos below.</p>'}
         <label class="field" for="cl-${c.id}">Letter number in the secret word (empty = none)<input id="cl-${c.id}" name="letter" type="number" min="1" value="${c.letter_index != null ? c.letter_index + 1 : ''}"></label>
+        <label class="field" for="cl2-${c.id}">Second letter number (empty = none)<input id="cl2-${c.id}" name="letter2" type="number" min="1" value="${c.letter_index2 != null ? c.letter_index2 + 1 : ''}"></label>
+        <label class="field" for="ct-${c.id}">Only for this team<select id="ct-${c.id}" name="team_id"><option value="">Any team</option>${D.teams.map((t) => `<option value="${t.id}" ${t.id === c.team_id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></label>
+        <label class="field" for="ch-${c.id}">For (person's name, printed on the card)<input id="ch-${c.id}" name="holder" maxlength="60" value="${esc(c.holder || '')}"></label>
         <label class="field" for="cpt-${c.id}">Points<input id="cpt-${c.id}" name="points" type="number" min="0" value="${c.points}"></label>
         <label class="row" for="cg-${c.id}" style="font-weight:600"><input id="cg-${c.id}" name="golden" type="checkbox" ${c.golden ? 'checked' : ''} style="width:auto"> Golden card</label>
         <div class="row full"><button class="btn primary" type="submit">Save</button><button class="btn danger" type="button" data-do="delcard" data-id="${c.id}">Delete</button></div>
       </form></details>`;
     return `<div class="stack">
-      <section class="card"><h2 style="font-size:18px">Secret word</h2><form class="row" data-form="secret"><input name="secret" value="${esc(D.secret)}" aria-label="Secret word" style="flex:1 1 200px;text-transform:uppercase"><button class="btn small primary">Save</button></form>
-        <p class="muted small" style="margin:0">${D.secret.length} letters. Give each letter to one card below. Only you see this.</p></section>
+      <section class="card"><h2 style="font-size:18px">Secret word</h2><form class="row" data-form="secret"><input name="secret" value="${esc((() => { const p = String(D.pattern || '').split(',').map(Number).filter(Boolean); if (!p.length || p.reduce((a, b) => a + b, 0) !== D.secret.length) return D.secret; let i = 0; return p.map((n) => { const w = D.secret.slice(i, i + n); i += n; return w; }).join(' '); })())}" aria-label="Secret word" style="flex:1 1 200px;text-transform:uppercase"><button class="btn small primary">Save</button></form>
+        <p class="muted small" style="margin:0">${D.secret.length} letters. Type it with spaces (WASH TOGETHER) so the screen shows the word breaks. Only you see this.</p></section>
+      ${(() => { const R = C.filter((c) => /^R\d/.test(c.code) && c.team_id); if (!R.length) return '';
+        return `<section class="card"><h2 style="font-size:18px">Who gets which card (Day 1)</h2><p class="muted small" style="margin:0">One card per person, 2 letters each. Every team's 6 cards spell the whole word. Type each name, then print the person cards: the name is printed on the card.</p>
+        <form data-form="holders" class="stack">${D.teams.map((t) => `<div class="stack" style="gap:6px"><strong class="${teamClass(t.id)}"><span class="team-dot"></span> ${esc(t.name)}</strong>${R.filter((c) => c.team_id === t.id).map((c) => `<div class="row"><code style="width:3em">${esc(c.code)}</code><strong style="width:3.2em;letter-spacing:.1em">${esc((D.secret[c.letter_index] || '') + (D.secret[c.letter_index2] || ''))}</strong><input name="h-${c.id}" value="${esc(c.holder || '')}" placeholder="Name" aria-label="Name for card ${esc(c.code)}" maxlength="60" style="flex:1 1 160px"></div>`).join('')}</div>`).join('')}
+        <button class="btn primary">Save names</button></form></section>`; })()}
       <section class="card"><div class="spread"><h2 style="font-size:18px">Cards (${C.length})</h2><div class="row"><button class="btn small" data-do="addcard">+ Add card</button><a class="btn small primary" href="/print" target="_blank" rel="noopener">Print cards with QR codes</a></div></div></section>
       ${C.map(ed).join('')}
       <section class="card"><h2 style="font-size:18px">WAP cards for the lake (${(D.spots || []).length})</h2><p class="muted small" style="margin:0">Printed with their QR codes. A "find" clue is solved by scanning one of its right cards.</p>
@@ -258,7 +265,7 @@
   async function saveCard(form) {
     const id = form.dataset.id; const c = (D.cards || []).find((x) => x.id === id); const f = new FormData(form);
     const kind = f.get('kind');
-    const data = { prompt: String(f.get('prompt') || '').trim(), kind, code: String(f.get('code') || '').trim(), points: Math.max(0, Number(f.get('points')) || 0), golden: f.get('golden') === 'on', letter_index: f.get('letter') === '' ? '' : String(Math.max(0, Number(f.get('letter')) - 1)) };
+    const data = { prompt: String(f.get('prompt') || '').trim(), kind, code: String(f.get('code') || '').trim(), points: Math.max(0, Number(f.get('points')) || 0), golden: f.get('golden') === 'on', letter_index: f.get('letter') === '' ? '' : String(Math.max(0, Number(f.get('letter')) - 1)), letter_index2: (f.get('letter2') || '') === '' ? '' : String(Math.max(0, Number(f.get('letter2')) - 1)), team_id: String(f.get('team_id') || ''), holder: String(f.get('holder') || '').trim() };
     if (f.has('options')) data.options = String(f.get('options')).split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 6);
     if (f.has('answer')) data.answer = String(f.get('answer')).trim();
     if (kind === 'quiz' && c.kind !== 'quiz') { data.options = data.options || ['', '']; data.answer = '0'; }
@@ -362,6 +369,7 @@
       if (f.dataset.form === 'act') await saveAct(f);
       if (f.dataset.form === 'card') await saveCard(f);
       if (f.dataset.form === 'team') { await act('host_rename_team', { p_team: Number(f.dataset.id), p_name: new FormData(f).get('name') }, 'Renamed'); await refresh(); }
+      if (f.dataset.form === 'holders') { const fd = new FormData(f); for (const [k, v] of fd.entries()) { const id = k.slice(2); const c = (D.cards || []).find((x) => x.id === id); if (c && (c.holder || '') !== String(v).trim()) await act('host_save_card', { p_id: id, p_data: { holder: String(v).trim() } }); } toast('Names saved'); paintTab(true); return; }
       if (f.dataset.form === 'secret') { await act('host_set_secret', { p_word: new FormData(f).get('secret') }, 'Secret word saved'); paintTab(true); }
     } catch (x) {}
   });
