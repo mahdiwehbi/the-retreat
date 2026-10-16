@@ -28,6 +28,11 @@
   .tpage .boxes{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:1em;flex:1;min-height:0}
   .tpage .bx{background:var(--surface);border-top:.3em solid var(--tc);border-radius:.5em;padding:.6em .8em;overflow:hidden;font-size:.85em;white-space:pre-wrap;overflow-wrap:anywhere}
   .tpage .bx h3{font-size:.8em;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 .3em}
+  .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:5}
+  .confetti i{position:absolute;top:-4vh;width:.5em;height:1em;border-radius:.15em;animation:fall 3.2s linear infinite}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+  .podium.win .place{animation:rise .9s cubic-bezier(.2,.9,.3,1.2) both}.podium.win .p2{animation-delay:.4s}.podium.win .p1{animation-delay:.9s}.podium.win .p3{animation-delay:0s}
+  @keyframes rise{from{transform:translateY(40%);opacity:0}to{transform:none;opacity:1}}
   .kick{font-size:.75em;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
   .ttl{font-family:var(--display);font-weight:800;font-size:2.3em;line-height:1.05;letter-spacing:-.01em;text-wrap:balance;margin:0}
   .main{flex:1;min-height:0;display:flex;flex-direction:column;gap:1em}
@@ -163,7 +168,9 @@
 
   function foot() {
     const s = curSession();
-    return `<div class="foot"><span>${esc(host)}</span><span>${s ? 'Day ' + s.day + ' · ' + esc(s.label) + ' · ' + esc(s.title) : esc(WR.cfg.eventName)}</span></div>`;
+    const a = D.st.screen === 'activity' ? D.acts.find((x) => x.id === D.st.activity_id) : null;
+    const cnt = a && a.kind !== 'team' ? `<span class="muted" style="margin-left:auto;margin-right:1.2em">${new Set((D.resp || []).map((r) => r.participant_id)).size}/${D.players.length} answered</span>` : '';
+    return `<div class="foot"><span>${esc(host)}</span>${cnt}<span>${s ? 'Day ' + s.day + ' · ' + esc(s.label) + ' · ' + esc(s.title) : esc(WR.cfg.eventName)}</span></div>`;
   }
 
   function curSession() {
@@ -227,18 +234,18 @@
       const tid = order[pr.i]; const ti = D.teams.findIndex((t) => t.id === tid); const t = D.teams[ti] || { id: tid, name: teamName(tid) };
       const o = a.options || {}; const fields = o.fields || []; const e = (D.entries || []).find((x) => x.team_id === tid); const d = (e && e.data) || {};
       return `<div class="top"><div class="stack" style="gap:.3em;min-width:0"><div class="kick">${esc(a.title)} · presentation ${pr.i + 1} of ${order.length}</div><h1 class="ttl ${teamClass(tid)}" style="color:var(--tc)">${esc(t.name)}</h1></div></div>
-        <div class="tpage ${teamClass(tid)}">${(o.prompts || [])[ti] ? `<div class="pr">${esc(o.prompts[ti])}</div>` : ''}<div class="boxes">${fields.map((f, i) => { const v = d['f' + i]; const tg = f.tags || [];
+        <div class="tpage ${teamClass(tid)}">${(o.prompts || [])[ti] ? `<div class="pr">${esc(o.prompts[ti])}</div>` : ''}<div class="boxes">${(fields.length === 1 && (fields[0].tags || []).length) ? fields[0].tags.map((tag, gi) => { const v = (Array.isArray(d.f0) ? d.f0 : []).filter((it) => it.g === gi);
+          return `<div class="bx"><h3>${esc(tag)}</h3>${v.length ? `<ul style="margin:0;padding-left:1.1em;white-space:normal">${v.map((it) => `<li>${esc(it.t)}</li>`).join('')}</ul>` : '<span class="muted">…</span>'}</div>`; }).join('') : fields.map((f, i) => { const v = d['f' + i]; const tg = f.tags || [];
           const body = f.type === 'text' ? (v ? esc(v) : '<span class="muted">…</span>') : ((Array.isArray(v) && v.length) ? `<ul style="margin:0;padding-left:1.1em;white-space:normal">${v.map((it) => `<li>${tg.length && tg[it.g] ? `<b>${esc(tg[it.g])}:</b> ` : ''}${esc(it.t)}</li>`).join('')}</ul>` : '<span class="muted">…</span>');
           return `<div class="bx"><h3>${esc(f.label)}</h3>${body}</div>`; }).join('')}</div></div>`;
     }
     if (a.kind === 'team') {
       const o = a.options || {}; const fields = o.fields || [];
-      return head + `<div class="teams3">${D.teams.map((t, ti) => { const e = (D.entries || []).find((x) => x.team_id === t.id); const d = (e && e.data) || {};
-        return `<div class="tsheet ${teamClass(t.id)}"><h3>${esc(t.name)}</h3>${(o.prompts || [])[ti] ? `<div class="pr">${esc(o.prompts[ti])}</div>` : ''}
-          ${fields.map((f, i) => { const v = d['f' + i]; const tg = f.tags || [];
-            if (f.type === 'text') return `<div class="fl">${esc(f.label)}</div><div>${v ? esc(v) : '<span class="muted">…</span>'}</div>`;
-            const items = Array.isArray(v) ? v : [];
-            return `<div class="fl">${esc(f.label)}</div>${items.length ? `<ul>${items.map((it) => `<li class="n${it.g == null ? 3 : it.g}">${tg.length ? `<span class="tg" style="color:var(--nc)">${esc(tg[it.g] || '')}:</span> ` : ''}${esc(it.t)}</li>`).join('')}</ul>` : '<span class="muted">…</span>'}`; }).join('')}</div>`; }).join('')}</div>`;
+      const status = (t) => { const e = (D.entries || []).find((x) => x.team_id === t.id); const d = (e && e.data) || {};
+        const n = Object.values(d).reduce((k, v) => k + (Array.isArray(v) ? v.length : (v ? 1 : 0)), 0); return n ? `Writing… (${n} ${n === 1 ? 'entry' : 'entries'})` : 'Not started'; };
+      return head + `<div class="teams3">${D.teams.map((t, ti) => `<div class="tsheet ${teamClass(t.id)}"><h3>${esc(t.name)}</h3>${(o.prompts || [])[ti] ? `<div class="pr">${esc(o.prompts[ti])}</div>` : ''}
+          <div class="fl">On your phones</div><ul>${fields.map((f) => `<li>${esc(f.label)}${(f.tags || []).length ? ` <span class="muted">(${esc(f.tags.join(' / '))})</span>` : ''}</li>`).join('')}</ul>
+          <div class="muted" style="margin-top:auto">${status(t)}</div></div>`).join('')}</div>`;
     }
     if (a.kind === 'allocate') {
       const o = a.options || {}; const items = (o.items && o.items.length) ? o.items : D.teams.map((t) => t.name);
@@ -278,10 +285,16 @@
   }
 
   function vLeaderboard() {
+    const quizzes = D.acts.filter((x) => x.kind === 'quiz'); const lastQuiz = quizzes.length && quizzes[quizzes.length - 1].id === D.st.activity_id;
     const tot = new Map();
     const asked = new Set(D.resp.filter((r) => r.correct != null).map((r) => r.activity_id)).size;
     D.resp.forEach((r) => { const e = tot.get(r.participant_id) || { id: r.participant_id, pts: 0, ok: 0, team: r.team_id }; e.pts += r.points || 0; if (r.correct) e.ok++; tot.set(r.participant_id, e); });
     const list = [...tot.values()].filter((e) => e.pts > 0 || e.ok > 0).sort((a, b) => b.pts - a.pts).slice(0, 10);
+    if (lastQuiz && list.length) {
+      const top = list.slice(0, 3); const pl = (e, p) => e ? `<div class="place p${p} on ${teamClass(e.team)}"><div class="pn">${esc(playerName(e.id))}</div><div class="pp">${e.pts} pts · ${e.ok}/${asked}</div><div class="plinth">${p}</div></div>` : '<div></div>';
+      const conf = Array.from({ length: 40 }, (_, i) => `<i style="left:${(i * 37) % 100}%;animation-delay:${(i % 10) * .18}s;background:${['#F2B705', '#0A6E78', '#C2410C', '#6D28D9', '#8FD18B'][i % 5]}"></i>`).join('');
+      return `<div class="confetti">${conf}</div><div class="top"><div class="stack" style="gap:.3em"><div class="kick">Water Break · final</div><h1 class="ttl">${esc(playerName(top[0].id))} wins the quiz!</h1></div></div><div class="podium win">${pl(top[1], 2)}${pl(top[0], 1)}${pl(top[2], 3)}</div>`;
+    }
     return `<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Quiz</div><h1 class="ttl">Top players</h1></div></div>` +
       (list.length ? `<div class="lb">${list.map((e, i) => `<div class="lb-row ${teamClass(e.team)} ${i === 0 ? 'first' : ''}"><span class="rk">${i + 1}</span><span class="nm">${esc(playerName(e.id))} <span class="muted" style="font-size:.6em">${e.ok}/${asked} correct</span></span><span class="pt">${e.pts}</span></div>`).join('')}</div><div class="muted" style="font-size:.6em">Points: a right answer scores 500 to 1000, more when you answer faster.</div>` : `<div class="empty"><b>No points yet</b>Play a quiz question first.</div>`);
   }
