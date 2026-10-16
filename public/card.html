@@ -21,11 +21,18 @@
   const app = $('#app');
   if (!WR.configured) { WR.setupNotice(app); return; }
   const code = (new URLSearchParams(location.search).get('c') || '').trim().toUpperCase();
-  let me = null, card = null, teams = [], photoFile = null, pick = null;
+  let me = null, live = null, card = null, teams = [], photoFile = null, pick = null;
 
   async function start() {
     if (!code) return manual();
     try { me = await WR.checkMe(); } catch (e) { me = WR.getMe(); }
+    if (!me) {
+      // A name badge joins its owner straight into the team printed on it.
+      try {
+        const [b] = await rows('hunt_cards', (q) => q.ilike('code', code));
+        if (b && b.holder && b.team_id) { me = await rpc('join_retreat', { p_name: b.holder, p_team: b.team_id }); WR.setMe(me); }
+      } catch (e) {}
+    }
     if (!me) return WR.renderJoin(app, (m) => { me = m; load(); });
     load();
   }
@@ -41,9 +48,22 @@
     try {
       [card] = await rows('hunt_cards', (q) => q.ilike('code', code));
       teams = await rows('teams', (q) => q.order('id'));
+      [live] = await rows('state');
     } catch (e) { app.innerHTML = `<section class="card"><p class="notice bad">${esc(e.message)}</p></section>`; return; }
     if (!card) { app.innerHTML = `<section class="card"><h1 style="font-size:24px">Card not found</h1><p class="muted">The code ${esc(code)} is not part of this game. Check the code on the card.</p><a class="btn" href="/card">Type a code</a></section>`; return; }
+    if (card.letter_index != null && !(live && live.hunt_live)) return welcome();
     render();
+  }
+
+  function welcome() {
+    const t = teamClass(card.team_id || me.team_id);
+    const other = card.team_id && card.team_id !== me.team_id;
+    app.innerHTML = `<section class="card ${t}" style="text-align:center"><div class="eyebrow">WASH Coordination Team Retreat</div>
+      <div class="big-msg">Welcome, ${esc(me.name.split(' ')[0])}!</div>
+      <p style="margin:0">You are checked in${other ? '' : ` with <strong>${esc(teamName())}</strong>`}.</p>
+      ${other ? `<p class="notice bad" style="margin:0">This badge is ${esc(card.holder || 'someone else')}'s. Your phone is already in the game as ${esc(me.name)}.</p>` : ''}
+      <p class="muted small" style="margin:0">Keep your badge with you all day.</p>
+      <a class="btn primary block" href="/">Open the game</a></section>`;
   }
 
   function teamName() { const t = teams.find((x) => x.id === me.team_id); return t ? t.name : 'your team'; }

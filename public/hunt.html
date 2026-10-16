@@ -39,11 +39,13 @@
     if (!me) return WR.renderJoin(app, (m) => { me = m; go(); });
     go();
   }
-  function go() { live(['hunt_cards', 'teams', 'team_points'], refresh, 5000); }
+  let raceLive = false;
+  function go() { live(['hunt_cards', 'teams', 'team_points', 'state'], refresh, 5000); }
 
   async function refresh() {
     const [c, t, b] = await Promise.all([rows('hunt_cards', (q) => q.order('position').order('code')), rows('teams', (q) => q.order('id')), rpc('hunt_board')]);
     cards = c; teams = t; secretLen = b.length || 0; board = b;
+    try { const [s] = await rows('state'); raceLive = !!(s && s.hunt_live); } catch (e) {}
     try { solvedWord = await rpc('hunt_reveal', { p_pid: me.id, p_token: me.token }); } catch (e) {}
     try { mine = await rpc('hunt_my_team', { p_pid: me.id, p_token: me.token }); } catch (e) { if (/join again/i.test(e.message)) { WR.setMe(null); location.reload(); } }
     render();
@@ -58,6 +60,7 @@
     app.innerHTML = `
       <header class="spread"><span class="eyebrow">Treasure hunt</span><span class="chip ${teamClass(me.team_id)}"><span class="team-dot"></span>${esc(team.name)}</span></header>
       ${(() => {
+        if (!raceLive) return '';
         const pat = String(board.pattern || '').split(',').map(Number).filter(Boolean);
         const groups = pat.length ? pat : [secretLen]; let pos = 0;
         const tiles = groups.map((len) => { const g = Array.from({ length: len }, (_, k) => { const i = pos + k; const l = solvedWord ? solvedWord[i] : letters.get(i); return `<span class="${l ? 'on' : ''}">${l ? esc(l) : ''}</span>`; }).join(''); pos += len; return `<div class="tiles">${g}</div>`; }).join('');
@@ -72,7 +75,7 @@
       })()}
       ${(() => {
         const rooms = cards.filter((c) => /^R\d/.test(c.code) && (c.team_id == null || c.team_id === me.team_id)); const lake = cards.filter((c) => !/^R\d/.test(c.code));
-        const roomsHtml = rooms.length ? `<section class="card"><strong>Day 1 · Your team's cards</strong><p class="small" style="margin:0">Everyone has a card with their name on it. Scan it and answer: its 2 letters go to your team. You can retry until you get it right.</p>
+        const roomsHtml = rooms.length && raceLive ? `<section class="card"><strong>Day 1 · Your team's cards</strong><p class="small" style="margin:0">Everyone has a card with their name on it. Scan it and answer: its 2 letters go to your team. You can retry until you get it right.</p>
           <div class="tiles">${rooms.map((c) => { const m = byId.get(c.id) || {}; return `<span class="${m.solved ? 'on' : ''}" title="${esc(c.code)}" style="${!m.solved && m.wrong >= 3 ? 'opacity:.4' : ''}">${m.solved ? esc((m.letter || '') + (m.letter2 || '') || '✓') : esc(c.holder || '·')}</span>`; }).join('')}</div>
           <span class="how">${rooms.filter((c) => (byId.get(c.id) || {}).solved).length} of ${rooms.length} cards done</span></section>` : '';
         const lakeHtml = lake.length ? `<section class="card"><strong>Day 2 · WAP at the lake</strong><p class="small" style="margin:0">Your team leader holds the WAP deck: cards that describe latrines, water sources and wastewater disposal without naming them. For each clue, pick the right card and scan it. A wrong scan uses one of your 3 tries. Field tasks need a photo.</p></section>

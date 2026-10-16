@@ -189,7 +189,7 @@
     patch(x) {
       if (x.k === 'lobby') return { screen: 'lobby' };
       if (x.k === 'session') return { screen: 'session', session: x.s.key };
-      if (x.k === 'hunt') return { screen: 'hunt', session: x.s.key };
+      if (x.k === 'hunt') return Object.assign({ screen: 'hunt', session: x.s.key }, x.s.key === 'd1-race' ? { hunt_live: true } : {});
       if (x.k === 'q') return { activity_id: x.a.id, screen: 'activity', phase: 'open' };
       if (x.k === 'reveal') return { activity_id: x.a.id, screen: 'activity', phase: 'reveal' };
       if (x.k === 'lb') return { screen: 'leaderboard' };
