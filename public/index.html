@@ -83,7 +83,7 @@
 
   function header() {
     const t = teamOf(me.team_id);
-    return `<header class="spread"><div class="stack" style="gap:2px"><span class="eyebrow">${esc(WR.cfg.eventName)}</span><strong style="font-size:18px">${esc(me.name)}</strong></div>
+    return `<header class="spread"><div class="stack" style="gap:2px"><img src="/logo.png" alt="WaSH Sector Lebanon" style="height:30px;width:auto;align-self:flex-start"><span class="eyebrow">${esc(WR.cfg.eventName)}</span><strong style="font-size:18px">${esc(me.name)}</strong></div>
       <span class="chip ${teamClass(t.id)}"><span class="team-dot"></span>${esc(t.name)}</span></header>`;
   }
   const footer = () => `<nav class="foot-links" aria-label="More"><a href="/hunt">Treasure hunt</a><a href="/sap">Site test</a><a href="#" data-act="rejoin">Not ${esc(me.name)}? Join again</a></nav>`;

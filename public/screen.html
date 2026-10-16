@@ -166,7 +166,7 @@
   function vLobby() {
     const byTeam = D.teams.map((t) => ({ t, ps: D.players.filter((p) => p.team_id === t.id) }));
     return `<div class="lobby">${qrImg('#qr-src')}<div class="stack" style="gap:.6em;min-width:0">
-      <div class="kick">${esc(WR.cfg.eventName)}</div><div class="ttl">Scan to join</div>
+      <img src="/logo.png" alt="WaSH Sector Lebanon" style="height:2.4em;width:auto;align-self:flex-start"><div class="kick">${esc(WR.cfg.eventName)}</div><div class="ttl">Scan to join</div>
       <div class="muted">or open</div><div class="url">${esc(host)}</div>
       <div class="muted">${D.players.length} joined</div></div></div>
       <div class="teamcols">${byTeam.map(({ t, ps }) => `<div class="teamcol ${teamClass(t.id)}"><h3><span>${esc(t.name)}</span><span class="timer">${ps.length}</span></h3><div class="names">${ps.map((p) => `<span>${esc(p.name)}</span>`).join('')}</div></div>`).join('')}</div>`;
