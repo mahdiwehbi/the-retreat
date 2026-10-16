@@ -5,13 +5,13 @@
 window.WR_THEME = { name: 'Where the Waters Meet', tagline: 'WASH Sector Coordination Team Retreat · Taanayel, 22–23 October 2026' };
 window.WR_SESSIONS = [
   { key: 'd1-open', day: 1, label: 'Opening', time: '10:00–10:30', title: 'The Source', sub: 'Welcome, attendance and where were you?', from: 1, to: 4, opens: ['register'],
-    show: ['Scan your badge: your name appears on the screen.', 'Look at the map of Lebanon on the floor.', 'Stand where you were in the first week of the escalation (23 September 2024).', 'Say one sentence: what were you doing that day?', 'Then answer on your phone.'],
+    show: ['Scan your badge: your name appears on the screen.', 'Look at the map of Lebanon on the floor.', 'Stand where you were in the first week of the escalation (2 March 2026).', 'Say one sentence: what were you doing that day?', 'Then answer on your phone.'],
     host: ['Registration is open: everyone scans their badge; names appear on the join screen. Next locks it.', 'Tape a rough outline of Lebanon on the floor: North, Beirut, BML, Bekaa, South.', 'Go round the room, one sentence each.', 'Keep the word cloud on screen during coffee.', 'Announce the 3 teams and the points system.'] },
   { key: 'd1-s1', day: 1, label: 'Session 1', time: '10:30–12:00', title: 'Upstream', sub: 'The war response: what really happened', from: 5, to: 8, closes: ['register'],
     show: ['Timeline wall: write sticky notes and put them on the wall.', 'Green = worked · Red = broke down · Yellow = surprise.', 'Then dot vote the 3 notes that matter most with stickers.', 'Each team turns the top notes into Start / Stop / Continue.'],
     host: ['Reaching this card locks registration (reopen it in Host → Treasure hunt for a latecomer).', 'Real sticky notes and dot stickers: nothing on the phones until Start / Stop / Continue.', 'Optional opener: helium stick (5 min).', 'Timeline 40 min · dot vote 10 min · Start/Stop/Continue 30 min · read-out 10 min.', 'The final list becomes the lessons-learned note.'] },
-  { key: 'd1-coffee', day: 1, label: 'Coffee break', time: '12:00–12:15', title: 'Water Break', sub: 'Quiz: how well do you know the war sheet?', from: 9, to: 18,
-    show: ['10 quick questions from our own data.', 'Faster right answers score more.', 'Grab a coffee and keep your phone close.'],
+  { key: 'd1-coffee', day: 1, label: 'Coffee break', time: '12:00–12:15', title: 'Water Break', sub: 'Quiz: how well do you know our response dashboard?', from: 9, to: 18,
+    show: ['Quick questions from our own dashboard (ActivityInfo reporting since 2 March 2026).', 'Faster right answers score more.', 'Grab a coffee and keep your phone close.'],
     host: ['Each question opens, then reveals the answer and the top players.'] },
   { key: 'd1-s2', day: 1, label: 'Session 2', time: '12:15–13:05', title: 'Pipes & Pumps', sub: 'IM tools speed-dating', from: 19, to: 24,
     show: ['5 stations, one tool each. 6 minutes per station.', 'At each station your team writes one love, one pain and one wish.', 'Then vote on every tool: keep, fix or kill.'],
