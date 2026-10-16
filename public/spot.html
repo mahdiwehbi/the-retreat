@@ -73,10 +73,11 @@
     try {
       const res = await rpc('hunt_submit', { p_pid: me.id, p_token: me.token, p_code: b.dataset.clue, p_answer: spot.code, p_photo: null });
       mine = await rpc('hunt_my_team', { p_pid: me.id, p_token: me.token });
-      if (res.status === 'correct') render(`<section class="card" style="text-align:center"><div class="big-msg">Right!</div><p class="muted" style="margin:0">+${res.points} points for your team.</p></section>`);
+      const why = res.explain ? `<p style="margin:0"><strong>${esc(spot.code)} is: ${esc(res.name)}.</strong> ${esc(res.explain)}</p>` : '';
+      if (res.status === 'correct') render(`<section class="card"><div class="big-msg" style="text-align:center">Right! +${res.points}</div>${why}</section>`);
       else if (res.status === 'already') render('<p class="notice">Your team already solved that clue.</p>');
       else if (res.status === 'locked') render('<p class="notice bad">That clue is locked: 3 tries used.</p>');
-      else render(`<p class="notice bad"><strong>Not this card.</strong> ${res.left > 0 ? `${res.left} ${res.left === 1 ? 'try' : 'tries'} left on that clue.` : 'That clue is now locked.'}</p>`);
+      else render(`<section class="card"><p class="notice bad" style="margin:0"><strong>Not this card.</strong> ${res.left > 0 ? `${res.left} ${res.left === 1 ? 'try' : 'tries'} left on that clue.` : 'That clue is now locked.'}</p>${why}</section>`);
     } catch (ex) { toast(ex.message, 4000); render(); }
   });
 

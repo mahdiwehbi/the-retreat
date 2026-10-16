@@ -129,8 +129,25 @@
     app.innerHTML = `<header class="spread"><span class="eyebrow">WASH SAP field test</span><span class="chip ${teamClass(viewTeam)}"><span class="team-dot"></span>${esc(teamName(viewTeam))}</span></header>${summaryHtml(S)}`;
   }
 
+  function showReview(res) {
+    const diff = res.diff || []; const pct = res.total ? Math.round((res.right / res.total) * 100) : 0;
+    const tent = tents.find((t) => t.code === tentCode) || {};
+    app.innerHTML = `
+      <header class="spread"><span class="eyebrow">Tent ${tent.number} · feedback</span><a class="small" href="/sap">Site summary</a></header>
+      <section class="card" style="text-align:center"><div class="big-msg">${res.right} of ${res.total} right</div>
+        <div class="bar"><i style="width:${pct}%"></i></div>
+        <p class="muted" style="margin:0">${diff.length ? 'Here is what the tent card really says, and the WAP rule behind it.' : 'Perfect household form. Well done!'}</p></section>
+      ${diff.map((d) => `<section class="card"><strong>${esc(SAP.label(d.field))}</strong>
+        <div class="row"><span class="chip" style="color:var(--bad);border-color:var(--bad)">You: ${esc(d.given || 'blank')}</span><span class="chip" style="color:var(--good);border-color:var(--good)">Card: ${esc(d.expected)}</span></div>
+        <p class="small" style="margin:0">${esc(SAP.explain[d.field] || '')}</p></section>`).join('')}
+      <section class="card"><div class="row">${diff.length ? '<button class="btn" data-act="fix">Fix and send again</button>' : ''}<a class="btn primary" href="/sap">Next tent</a></div>
+        <span class="hint">Your first try counts for the team's accuracy score.</span></section>`;
+    window.scrollTo(0, 0);
+  }
+
   /* ---------- events ---------- */
   app.addEventListener('click', (e) => {
+    if (e.target.closest('[data-act="fix"]')) { renderForm(); window.scrollTo(0, 0); return; }
     const b = e.target.closest('[data-f]'); if (!b) return;
     form[b.dataset.f] = b.dataset.v;
     if (b.dataset.f === 'latrine_inside' && b.dataset.v === 'No') form.latrine_ok = 'No';
@@ -150,7 +167,8 @@
         SAP.HH_TANKS.forEach((s) => { if (data['tank_' + s] == null) data['tank_' + s] = '0'; });
         if (data.latrine_inside === 'No') data.latrine_ok = 'No';
         const kap = kapOn ? Object.fromEntries(SAP.kap.filter((f) => form[f.id]).map((f) => [f.id, form[f.id]])) : null;
-        await rpc('sap_save_household', { p_pid: me.id, p_token: me.token, p_tent: tentCode, p_data: data, p_kap: kap, p_started: started });
+        const res = await rpc('sap_save_household', { p_pid: me.id, p_token: me.token, p_tent: tentCode, p_data: data, p_kap: kap, p_started: started });
+        return showReview(res);
       }
       toast('Sent'); setTimeout(() => (location.href = '/sap'), 600);
     } catch (ex) {

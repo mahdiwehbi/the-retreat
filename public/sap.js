@@ -94,5 +94,26 @@ window.SAP = (function () {
     };
   }
 
-  return { household, kap, site, siteCards, sample, summarise, HH_TANKS, SITE_TANKS };
+  // The WAP rule behind each household answer, shown when an answer differs from the tent card.
+  const tankRule = 'Count every tank at the shelter by size, inside and outside. Jerrycans and anything under 80 L do not count. One barrel = 200 L, so "five barrels" = 1,000 L, and 1 m³ = 1,000 L.';
+  const explain = {
+    members: 'Count everyone who lives in the household, all ages.',
+    children: 'Children are under 18. Someone who is 18 is an adult, not a child.',
+    adults: 'Adults here are 18 to 59. An 18-year-old counts; a 60-year-old does not.',
+    elderly: 'Elderly means 60 or older. 59 is still an adult.',
+    female_headed: 'Female-headed: usually a widow or an unmarried, divorced or separated woman with children.',
+    disability: 'Count members with a permanent physical disability that affects mobility and access to WASH facilities.',
+    shared_tank: 'If a tank is shared, say Yes, and count it for one family only so it is not counted twice.',
+    drink_source: 'Main source means the one that gives the greatest quantity for that use. Bottled water is its own source; a network tap is "Public network".',
+    domestic_source: 'A capped borehole with a slab, sealed underground, is protected; an open dug well is unprotected. Trucking paid by an NGO and by occupants are different options.',
+    pays_water: 'Yes if the household pays, inside the rent or separately. Buying bottled water counts as paying.',
+    greywater: 'Above ground = runs on the soil. Channel = into a ditch. Uncovered pit = open hole. Covered pit = lid but unlined sides. Cesspit = lined sides and cover, open base.',
+    latrine_inside: 'Only latrines inside the shelter count here; shared latrines outside go on the site form.',
+    latrine_ok: 'Inside shelters, materials are not considered. Usable = it works and is not permanently blocked. Needing maintenance (not rehabilitation) is still improved and usable.',
+    soap: 'Yes only if soap is at the handwashing point when you visit.'
+  };
+  HH_TANKS.forEach((sz) => { explain['tank_' + sz] = tankRule; });
+  const label = (id) => { const f = household.find((x) => x.id === id); return f ? f.label : id; };
+
+  return { household, kap, site, siteCards, sample, summarise, HH_TANKS, SITE_TANKS, explain, label };
 })();

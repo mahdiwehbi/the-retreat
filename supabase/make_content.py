@@ -203,20 +203,28 @@ tents = []  # code, team, number, card text, truth
 
 
 def household(n):
+    # Ages listed one by one, so collectors must apply the WAP cut-offs (under 18; 60 or more).
     size = random.randint(3, 9)
-    elderly = random.choice([0, 0, 0, 1, 1, 2])
-    children = random.randint(1, max(1, size - elderly - 1))
-    adults = size - children - elderly
+    ages = [random.choice([62, 65, 70, 60, 59])] if random.random() < 0.45 else []
+    ages += [random.randint(19, 45) for _ in range(random.choice([1, 2, 2]))]
+    if random.random() < 0.5:
+        ages.append(18)
+    while len(ages) < size:
+        ages.append(random.choice([17, 16, 12, 9, 7, 5, 3, 1]))
+    ages = sorted(ages[:size], reverse=True)
+    children = sum(a < 18 for a in ages); elderly = sum(a >= 60 for a in ages); adults = size - children - elderly
     tanks = {s: 0 for s in SIZES}
     for _ in range(random.choice([1, 1, 2, 2, 3])):
         tanks[random.choice([200, 500, 500, 1000, 1000, 2000])] += 1
+    jerry = random.choice([0, 0, 2, 3, 4])
     shared = random.choice(['No', 'No', 'No', 'Yes'])
     drink = random.choice(['Bottled water', 'Bottled water', 'Water trucking (NGO)', 'Public network'])
     domestic = random.choice(['Water trucking (NGO)', 'Water trucking (NGO)', 'Protected borehole', 'Water trucking (occupants)', 'Unprotected borehole'])
     pays = 'Yes' if 'occupants' in domestic or drink == 'Bottled water' else random.choice(['No', 'No', 'Yes'])
     grey = random.choice(['Above ground', 'Above ground', 'Uncovered pit', 'Covered pit', 'Cesspit', 'Irrigation / stormwater channel'])
     lat_inside = random.choice(['Yes', 'No', 'No'])
-    lat_ok = random.choice(['Yes', 'No']) if lat_inside == 'Yes' else 'No'
+    lat_state = random.choice(['ok', 'maintenance', 'blocked']) if lat_inside == 'Yes' else None
+    lat_ok = 'Yes' if lat_state in ('ok', 'maintenance') else 'No'
     female = random.choice(['No', 'No', 'No', 'Yes'])
     disab = random.choice([0, 0, 0, 1])
     soap = random.choice(['Yes', 'Yes', 'No'])
@@ -224,24 +232,32 @@ def household(n):
              'female_headed': female, 'disability': str(disab), 'shared_tank': shared, 'drink_source': drink,
              'domestic_source': domestic, 'pays_water': pays, 'greywater': grey, 'latrine_inside': lat_inside,
              'latrine_ok': lat_ok, 'soap': soap}
-    for s in SIZES:
-        truth['tank_' + str(s)] = str(tanks[s])
-    tank_txt = ', '.join(f"{c} × {s:,} L" for s, c in tanks.items() if c) or 'no tanks'
+    for sz in SIZES:
+        truth['tank_' + str(sz)] = str(tanks[sz])
+    say = {200: 'a one-barrel tank', 500: 'a 500 L tank', 1000: 'a "five barrel" tank', 2000: 'a 2 m³ tank'}
+    tank_parts = []
+    for sz, c in tanks.items():
+        if c:
+            tank_parts.append(say[sz] if c == 1 else f'{c} × {say[sz][2:]}' if sz != 1000 else f'{c} "five barrel" tanks')
+    tank_txt = ', '.join(tank_parts) or 'no tanks'
+    src = {'Bottled water': 'bottled water they buy', 'Water trucking (NGO)': 'a truck an NGO pays for',
+           'Public network': 'the network tap at the entrance', 'Protected borehole': 'the capped, sealed borehole with a slab',
+           'Water trucking (occupants)': 'a truck the families pay for themselves', 'Unprotected borehole': 'an open dug well'}
     lines = [
-        f'Family of {size}: {children} under 18, {adults} adults 18–59, {elderly} aged 60 or more.',
-        'A woman heads this household.' if female == 'Yes' else 'A man heads this household.',
-        f'{disab} member with a physical disability.' if disab else 'Nobody with a physical disability.',
-        f'Water storage at the tent: {tank_txt}. ' + ('They share a tank with the neighbours.' if shared == 'Yes' else 'The tanks are theirs only.'),
-        f'Drinking water comes from: {drink.lower()}. Water for washing and cleaning comes from: {domestic.lower()}.',
-        'They pay for water.' if pays == 'Yes' else 'They do not pay for water.',
+        f'{size} people live here, aged ' + ', '.join(map(str, ages)) + '.',
+        'A widow heads this household.' if female == 'Yes' else 'The father heads this household.',
+        f'{disab} member uses a wheelchair.' if disab else 'Nobody has a physical disability.',
+        f'Storage at the tent: {tank_txt}' + (f', plus {jerry} jerrycans of 20 L.' if jerry else '.') + (' One tank is shared with the neighbours.' if shared == 'Yes' else ''),
+        f'They drink {src[drink]}; for washing they use {src[domestic]}.',
+        'They pay for their water.' if pays == 'Yes' else 'They pay nothing for water.',
         {'Above ground': 'Kitchen and shower water runs out onto the ground behind the tent.',
          'Uncovered pit': 'Kitchen and shower water goes into an open hole next to the tent.',
-         'Covered pit': 'Kitchen and shower water goes into a covered hole, sides not lined.',
-         'Cesspit': 'Kitchen and shower water goes into a lined, covered pit that is desludged.',
-         'Irrigation / stormwater channel': 'Kitchen and shower water goes into the irrigation ditch.'}[grey],
-        ('A latrine inside the shelter, block walls, working and lockable.' if lat_ok == 'Yes' else
-         'A latrine inside the shelter, but it has been blocked for weeks.') if lat_inside == 'Yes'
-        else 'No latrine inside the shelter; they use the shared latrines.',
+         'Covered pit': 'Kitchen and shower water goes into a hole with a wooden lid; the sides are bare soil.',
+         'Cesspit': 'Kitchen and shower water goes into a block-lined, covered pit with an open base, desludged twice a year.',
+         'Irrigation / stormwater channel': 'Kitchen and shower water flows into the irrigation ditch.'}[grey],
+        {'ok': 'Inside the shelter: a latrine with a pour-flush pan that works.',
+         'maintenance': 'Inside the shelter: a latrine of plastic sheeting; the pan works but the door hinge needs fixing.',
+         'blocked': 'Inside the shelter: a block-walled latrine, blocked for weeks.', None: 'No latrine inside the shelter; they use the shared latrines.'}[lat_state],
         'Soap is at the handwashing point.' if soap == 'Yes' else 'There is no soap at the handwashing point.'
     ]
     return truth, ' '.join(lines)
@@ -287,4 +303,10 @@ for code, team, n, text, truth in tents:
     L.append(f"  insert into sap_truth (tent_id, data) values (v, {j(truth)});")
 L.append('end $$;')
 OUT.write_text('\n'.join(L) + '\n', encoding='utf-8')
+U = ['-- Generated by make_content.py: refreshes the tent cards and their truth without touching anything else.',
+     'delete from sap_households where true;']
+for code, team, n, text, truth in tents:
+    U.append(f"update sap_tents set card = {q(text)} where code = {q(code)};")
+    U.append(f"update sap_truth set data = {j(truth)} where tent_id = (select id from sap_tents where code = {q(code)});")
+OUT.with_name('006_tents.sql').write_text('\n'.join(U) + '\n', encoding='utf-8')
 print(f'{len(acts)} activities, {len(spots)} spot cards, {len(cards)} clues, {len(tents)} tents -> {OUT.name}')
