@@ -82,7 +82,9 @@
         <div class="word">${word}</div>
         <p class="how" style="margin:0">Tap one of your letters, then a box (or drag it). Tap a filled box to empty it. Your whole team sees the boxes.</p>
         ${won ? `<p class="notice ${won === me.team_id ? 'good' : ''}"><strong>${esc((teams.find((t) => t.id === won) || {}).name || '')}</strong> cracked it first!</p>` : ''}
-        ${mineSolved ? '<p class="notice good">Your team cracked it.</p>' : left > 0 ? `<div class="row"><button class="btn primary" data-submit ${slots.length < len ? 'disabled' : ''}>Submit the message for ${esc(team.name)}</button><span class="how">${left} of 5 tries left${slots.length < len ? ` · fill all ${len} boxes first` : ''}</span></div>` : '<p class="notice">Your team used its 5 tries.</p>'}
+        ${mineSolved ? '<p class="notice good">Your team cracked it.</p>' : left > 0 ? `<div class="row"><button class="btn primary" data-submit ${slots.length < len ? 'disabled' : ''}>Submit the boxes for ${esc(team.name)}</button><span class="how">${left} of 5 tries left${slots.length < len ? ` · or fill all ${len} boxes` : ''}</span></div>
+          <form id="gf" class="row" style="margin-top:4px"><input id="guess" maxlength="60" autocomplete="off" aria-label="Type the whole message" placeholder="Or type the whole message" style="flex:1 1 180px"><button class="btn">Guess</button></form>
+          <span class="how">Missing letters (someone away)? You can type your guess for the whole message. Each guess uses 1 of the 5 tries.</span>` : '<p class="notice">Your team used its 5 tries.</p>'}
       </section>` : '<section class="card"><p class="muted" style="margin:0">The word race starts after lunch. Then you will put your letters together with your team here.</p></section>'}
       <nav class="foot-links"><a href="/">Back to the game</a></nav>`;
   }
@@ -107,6 +109,13 @@
         toast(r.status === 'correct' ? (r.first ? 'You cracked it first! +10 points' : 'Right! +5 points') : r.status === 'out' ? 'No tries left' : 'Not the message. ' + r.left + ' tries left', 4000); } catch (ex) { toast(ex.message, 4000); }
       refresh();
     }
+  });
+  app.addEventListener('submit', async (e) => {
+    if (e.target.id !== 'gf') return; e.preventDefault();
+    const g = $('#guess').value.trim(); if (!g) return;
+    try { const r = await rpc('hunt_guess', { p_pid: me.id, p_token: me.token, p_guess: g });
+      toast(r.status === 'correct' ? (r.first ? 'You cracked it first! +10 points' : 'Right! +5 points') : r.status === 'out' ? 'No tries left' : 'Not the message. ' + r.left + ' tries left', 4000); } catch (ex) { toast(ex.message, 4000); }
+    refresh();
   });
   app.addEventListener('dragstart', (e) => { const t = e.target.closest('[data-tile]'); if (t) { pick = t.dataset.tile; e.dataTransfer.setData('text/plain', pick); } });
   app.addEventListener('dragover', (e) => { if (e.target.closest('[data-slot]')) e.preventDefault(); });
