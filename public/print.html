@@ -10,6 +10,8 @@
 <style id="base">
   :root{--ink:#1B2430;--muted:#5B6573;--accent:#0A6E78;--line:#C8D8DA;--t1:#0A6E78;--t2:#C2410C;--t3:#6D28D9;--l1:#E3F2F3;--l2:#FBEADF;--l3:#EEE7FB}
   *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  @media screen{#out{zoom:var(--z,1.35)} #out .solo-badge{display:inline-block;margin:6mm}}
   body{margin:0;background:#E9EFF0;color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif}
   .tc1{--tc:var(--t1);--tl:var(--l1)} .tc2{--tc:var(--t2);--tl:var(--l2)} .tc3{--tc:var(--t3);--tl:var(--l3)}
   /* hub */
@@ -51,17 +53,19 @@
   .badge .last{font-size:14pt;margin-top:1mm}
   .badge .pill{margin-top:3mm;background:var(--tc);color:#fff;font-weight:700;font-size:11pt;letter-spacing:.04em;padding:1.2mm 6mm;border-radius:99px;text-transform:uppercase}
   .badge .qr img{width:44mm;height:44mm;margin-top:6mm;display:block}
+  .badge .roomtag{margin-top:1.5mm;font-weight:700;font-size:11pt;color:var(--tc)}
   .badge .code{font-family:'IBM Plex Mono',monospace;font-size:7pt;color:var(--muted);margin-top:1mm}
   .foot{position:absolute;left:0;bottom:0;width:100%;height:10mm;background:var(--tc);color:#fff;font-weight:700;font-size:8pt;display:flex;align-items:center;justify-content:center;letter-spacing:.06em}
-  .foot svg{position:absolute;left:0;top:-3mm;width:100%;height:4mm}
+  .foot svg{display:block;width:100%;height:100%}
   /* A5 landscape room card */
-  .a5{width:210mm;height:148mm;position:relative;background:#fff;display:grid;grid-template-columns:1fr 70mm;outline:0.2mm dashed #ccc;overflow:hidden}
+  .a5{width:210mm;height:148mm;position:relative;background:#fff;display:grid;grid-template-columns:1fr 62mm;outline:0.2mm dashed #ccc;overflow:hidden}
   .a5 .left{position:relative;padding:0 0 12mm}
   .a5 .band{position:relative;background:var(--tl);padding:6mm 8mm 8mm}
-  .a5 .band .logo{height:12mm}
+  .a5 .band .logo{height:10mm}
   .a5 .band .theme{margin-top:2mm;font-weight:700;font-size:10pt;letter-spacing:.06em;color:var(--tc)}
   .a5 h1{font-family:'Fraunces',serif;font-size:26pt;line-height:1.05;margin:1mm 0 0}
-  .a5 .sub{color:var(--muted);font-size:11pt}
+  .a5 .sub{color:var(--muted);font-size:10pt}
+  .a5 .band .row2{display:flex;align-items:center;gap:4mm;flex-wrap:wrap}
   .a5 .roomno{display:inline-block;margin-top:2mm;background:var(--tc);color:#fff;font-weight:700;padding:1mm 4mm;border-radius:99px;font-size:11pt}
   .a5 .plan{padding:3mm 8mm 0;display:grid;grid-template-columns:1fr 1fr;gap:5mm;font-size:8.6pt;line-height:1.25}
   .a5 .plan .h{font-weight:700;font-size:8pt;letter-spacing:.08em;color:var(--tc);margin-bottom:1.2mm}
@@ -70,7 +74,7 @@
   .a5 .plan .r.mv{background:#FFE9B8;font-weight:700;border-radius:1mm;padding:0 1mm;margin-left:-1mm}
   .a5 .right{position:relative;background:var(--tl);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2mm;padding:6mm 6mm 14mm;text-align:center}
   .a5 .right .msg{font-family:'Fraunces',serif;font-weight:700;font-size:15pt;color:var(--tc);line-height:1.15}
-  .a5 .right .qr img{width:46mm;height:46mm;display:block;background:#fff;padding:2mm;border-radius:3mm}
+  .a5 .right .qr img{width:42mm;height:42mm;display:block;background:#fff;padding:2mm;border-radius:3mm}
   .a5 .right .how{font-size:9pt;color:var(--muted)}
   .a5 .right .code{font-family:'IBM Plex Mono',monospace;font-size:7pt;color:var(--muted)}
   /* generic cards (decks, sites, tents) */
@@ -161,14 +165,15 @@
   const WF = '<svg viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><path d="M0 2 C12 0 25 4 37 2 C50 0 62 4 75 2 C87 0 95 3 100 2 V4 H0 Z" fill="currentColor"/></svg>';
   const sf = (t) => `<div class="sf"><img src="/logo.png" alt="">${esc(t)}</div>`;
 
+  const roomOf = (name) => { const h = cards.find((x) => /^H\d/.test(x.code) && x.holder === name); return h ? h.room : ''; };
   const badge = (c) => { const [f, ...l] = (c.holder || '______').split(' ');
     return `<div class="badge ${tc(c.team_id)}"><div class="band">${W}</div><img class="logo" src="/logo-t.png" alt="WaSH Sector Lebanon"><div class="theme">WHERE THE WATERS MEET</div><div class="ev">WASH Sector Coordination Team Retreat</div>
       <div class="first">${esc(f)}</div><div class="last">${esc(l.join(' '))}</div><div class="pill">${esc(tname(c.team_id))}</div>
-      <div class="qr"><img src="${qr(O + '/card?c=' + encodeURIComponent(c.code))}" alt="QR code"></div><div class="code">${esc(c.code)}</div>
+      <div class="qr"><img src="${qr(O + '/card?c=' + encodeURIComponent(c.code))}" alt="QR code"></div>${roomOf(c.holder) ? `<div class="roomtag">Room ${esc(roomOf(c.holder))}</div>` : `<div class="code">${esc(c.code)}</div>`}
       <div class="foot" style="color:#fff"><span style="position:absolute;left:0;top:-3mm;width:100%;height:4mm;color:var(--tc)">${WF}</span>22–23 OCTOBER 2026</div></div>`; };
   const bed = (c) => `<div class="a5 ${tc(c.team_id)}"><div class="left"><div class="band"><img class="logo" src="/logo-t.png" alt="WaSH Sector Lebanon"><div class="theme">WHERE THE WATERS MEET · SAFE HARBOUR</div>
-      <h1>Welcome, ${esc((c.holder || 'friend').split(' ')[0])}!</h1><div class="sub">This room is your safe harbour for tonight.</div>${c.room ? `<div class="roomno">Room ${esc(c.room)}</div>` : ''}${W}</div>
-      <div class="plan">${AGENDA.map(([d, rows]) => `<div class="day"><div class="h">${esc(d.toUpperCase())}</div>${rows.map(([t, x, pl, mv]) => `<div class="r ${mv ? 'mv' : ''}"><b>${esc(t.split('–')[0])}</b><span>${esc(x)}</span></div>`).join('')}</div>`).join('')}</div></div>
+      <h1>Welcome, ${esc((c.holder || 'friend').split(' ')[0])}!</h1><div class="row2"><div class="sub">This room is your safe harbour for tonight.</div>${c.room ? `<div class="roomno">Room ${esc(c.room)}</div>` : ''}</div>${W}</div>
+      <div class="plan">${AGENDA.map(([d, rows]) => `<div class="day"><div class="h">${esc(d.toUpperCase())}</div>${rows.map(([t, x, pl, mv, sh]) => `<div class="r ${mv ? 'mv' : ''}"><b>${esc(t.split('–')[0])}</b><span>${esc(sh || x)}</span></div>`).join('')}</div>`).join('')}</div></div>
       <div class="right"><div class="msg">A message washed up in your room…</div><div class="qr"><img src="${qr(O + '/card?c=' + encodeURIComponent(c.code))}" alt="QR code"></div><div class="how">Scan it and answer:<br>2 points for the ${esc(tname(c.team_id))}.</div><div class="code">${esc(c.code)}</div></div>
       <div class="foot"><span style="position:absolute;left:0;top:-3mm;width:100%;height:4mm;color:var(--tc)">${WF}</span>DAY 1 · ROOM WELCOME · ${esc(tname(c.team_id).toUpperCase())} · 22–23 OCTOBER 2026</div></div>`;
   const chunk = (a, n) => { const r = []; for (let i = 0; i < a.length; i += n) r.push(a.slice(i, i + n)); return r; };
@@ -177,24 +182,24 @@
   // The full agenda. mv = a time to be somewhere or to move: highlighted.
   const AGENDA = [
     ['Day 1 · Thursday 22 October', [
-      ['10:00', 'Arrive at the hotel and scan your badge at the welcome', 'Hotel meeting room', 1],
-      ['10:00–10:30', 'The Source · opening', 'Meeting room'], ['10:30–12:00', 'Upstream · the war response', 'Meeting room'],
-      ['12:00–12:15', 'Water Break · coffee and quiz', 'Beside the meeting room'],
-      ['12:15–14:00', 'Pipes & Pumps · Murky Waters · Flood Watch', 'Meeting room'],
-      ['14:00', 'Lunch at the restaurant · pick up your room key', 'Hotel restaurant', 1],
-      ['15:00', 'Back in the meeting room', 'Meeting room', 1],
-      ['15:00–16:00', 'Message in a Bottle · Deep Waters', 'Meeting room'],
-      ['16:00', 'Back to your room: rest', 'Hotel', 1],
-      ['17:00', 'Gather at the hotel entrance · drive to Wadi Chamsine in our own cars', 'Hotel entrance', 1],
-      ['17:30–18:30', 'Rapids at Sunset · ATV ride', 'Wadi Chamsine'], ['19:00–21:30', 'The Gathering · dinner', 'Wadi Chamsine'],
-      ['21:30', 'Drive back to the hotel · free evening', 'Wadi Chamsine → Hotel', 1]]],
+      ['10:00', 'Arrive at the hotel and scan your badge at the welcome', 'Hotel meeting room', 1, 'Arrive · scan your badge'],
+      ['10:00–10:30', 'The Source · opening', 'Meeting room', 0, 'The Source'], ['10:30–12:00', 'Upstream · the war response', 'Meeting room', 0, 'Upstream'],
+      ['12:00–12:15', 'Water Break · coffee and quiz', 'Beside the meeting room', 0, 'Water Break'],
+      ['12:15–14:00', 'Pipes & Pumps · Murky Waters · Flood Watch', 'Meeting room', 0, 'Pipes & Pumps · Flood Watch'],
+      ['14:00', 'Lunch at the restaurant · pick up your room key', 'Hotel restaurant', 1, 'Lunch · pick up your room key'],
+      ['15:00', 'Back in the meeting room', 'Meeting room', 1, 'Back in the meeting room'],
+      ['15:00–16:00', 'Message in a Bottle · Deep Waters', 'Meeting room', 0, 'Message in a Bottle · Deep Waters'],
+      ['16:00', 'Back to your room: rest', 'Hotel', 1, 'Back to your room: rest'],
+      ['17:00', 'Gather at the hotel entrance · drive to Wadi Chamsine in our own cars', 'Hotel entrance', 1, 'Gather at the entrance · drive to Wadi Chamsine'],
+      ['17:30–18:30', 'Rapids at Sunset · ATV ride', 'Wadi Chamsine', 0, 'Rapids at Sunset · ATV'], ['19:00–21:30', 'The Gathering · dinner', 'Wadi Chamsine', 0, 'The Gathering · dinner'],
+      ['21:30', 'Drive back to the hotel · free evening', 'Wadi Chamsine → Hotel', 1, 'Drive back to the hotel']]],
     ['Day 2 · Friday 23 October', [
-      ['09:00–10:30', 'Breakfast · Morning Mist', 'Hotel', 1],
-      ['11:00', 'Checked out, bags in the cars · gather at the hotel entrance · drive to Taanayel Lake', 'Hotel entrance', 1],
-      ['11:30–13:30', 'The Expedition · WAP challenge and site test', 'Taanayel Lake'],
-      ['13:30', 'Gather at the cars · drive to Chams', 'Taanayel Lake', 1],
-      ['14:00–16:00', 'Back to Shore · Ripples · lunch, bowling, awards and closing', 'Chams'],
-      ['16:00', 'Departure home', 'Chams', 1]]]];
+      ['09:00–10:30', 'Breakfast · Morning Mist', 'Hotel', 1, 'Breakfast, until 10:30'],
+      ['11:00', 'Checked out, bags in the cars · gather at the hotel entrance · drive to Taanayel Lake', 'Hotel entrance', 1, 'Checked out, bags in cars · drive to the lake'],
+      ['11:30–13:30', 'The Expedition · WAP challenge and site test', 'Taanayel Lake', 0, 'The Expedition'],
+      ['13:30', 'Gather at the cars · drive to Chams', 'Taanayel Lake', 1, 'Gather at the cars · drive to Chams'],
+      ['14:00–16:00', 'Back to Shore · Ripples · lunch, bowling, awards and closing', 'Chams', 0, 'Lunch, bowling, awards'],
+      ['16:00', 'Departure home', 'Chams', 1, 'Departure home']]]];
   const agendaSheet = () => `<section class="sheet a4 one" style="padding:12mm 14mm"><div class="agenda">
     <div class="row" style="justify-content:space-between;align-items:flex-end;border-bottom:0.8mm solid var(--accent);padding-bottom:3mm"><div><div style="font-size:9pt;font-weight:700;letter-spacing:.1em;color:var(--accent)">AGENDA · WASH SECTOR COORDINATION TEAM RETREAT</div><div style="font-family:Fraunces,serif;font-size:28pt;font-weight:700;line-height:1.05">Where the Waters Meet</div><div style="color:var(--muted)">22–23 October 2026 · Herons, Kingfishers, Flamingos</div></div><img src="/logo.png" alt="WaSH Sector Lebanon" style="height:15mm"></div>
     ${AGENDA.map(([d, rs]) => `<h3>${esc(d)}</h3><div class="ag">${rs.map(([t, a, pl, mv]) => `<div class="${mv ? 'mv' : ''}"><b>${esc(t)}</b><span>${mv ? '➜ ' : ''}${esc(a)}</span><span>${esc(pl)}</span></div>`).join('')}</div>`).join('')}
