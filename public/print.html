@@ -4,53 +4,121 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Print Cards · WASH Retreat</title>
+<title>Print Checklist · WASH Retreat</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Mono:wght@600&family=IBM+Plex+Sans:wght@400;600&display=swap">
-<style>
-  :root{--ink:#10262B;--muted:#53676C;--accent:#0A6E78;--gold:#A86B00;--line:#C8D8DA;--t1:#2F5DA8;--t2:#B8561A;--t3:#7442AD}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap">
+<style id="base">
+  :root{--ink:#1B2430;--muted:#5B6573;--accent:#0A6E78;--line:#C8D8DA;--t1:#0A6E78;--t2:#C2410C;--t3:#6D28D9;--l1:#E3F2F3;--l2:#FBEADF;--l3:#EEE7FB}
   *{box-sizing:border-box}
   body{margin:0;background:#E9EFF0;color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif}
-  .bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:12px max(16px,env(safe-area-inset-left,0px));background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2}
-  .bar label{display:flex;gap:6px;align-items:center;font-weight:600}
-  .bar button{font:inherit;font-weight:600;padding:10px 18px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
-  .page{width:210mm;min-height:297mm;margin:12px auto;padding:10mm;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:88mm;gap:6mm;background:#fff}
-  .page.one{grid-template-columns:1fr;grid-auto-rows:auto}
-  .card{border:1.2mm dashed var(--line);border-radius:5mm;padding:5mm 6mm;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;break-inside:avoid;overflow:hidden}
-  .top{font-size:9pt;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
-  .big{font-family:'Bricolage Grotesque',Arial,sans-serif;font-weight:800;font-size:22pt;line-height:1.05}
-  .qr img{width:42mm;height:42mm;display:block}
-  .code{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:16pt;letter-spacing:.1em}
-  .how{font-size:8.5pt;color:var(--muted)}
-  .desc{font-size:11pt;line-height:1.35;text-align:left}
-  .sf{margin-top:auto;padding-top:1.5mm;border-top:0.3mm dashed #bbb;width:100%;text-align:center;font-size:8pt;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#555}
-  .room{border:0.6mm solid var(--ink);border-radius:3mm;padding:2mm 6mm;font-size:16pt;font-weight:600}
+  .tc1{--tc:var(--t1);--tl:var(--l1)} .tc2{--tc:var(--t2);--tl:var(--l2)} .tc3{--tc:var(--t3);--tl:var(--l3)}
+  /* hub */
+  .hub{max-width:880px;margin:0 auto;padding:20px 16px 60px;display:flex;flex-direction:column;gap:14px}
+  .hub h1{font-family:'Fraunces',serif;font-size:32px;margin:0}
+  .box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px}
+  .box h2{margin:0;font-size:18px}
+  .muted{color:var(--muted)} .small{font-size:14px}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .btn{font:inherit;font-weight:600;padding:9px 16px;border-radius:10px;border:1px solid var(--accent);background:#fff;color:var(--accent);cursor:pointer;min-height:44px}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn[aria-pressed="true"]{background:var(--accent);color:#fff}
+  .item{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #eef2f3}
+  .item:first-of-type{border-top:0}
+  .item input[type=checkbox]{width:22px;height:22px}
+  .item strong{display:block}
+  .rooms{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+  .rooms label{display:flex;gap:8px;align-items:center;font-size:14px}
+  .rooms input{width:80px;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px}
+  .notice{background:#FFF7E6;border:1px solid #F0D79B;border-radius:10px;padding:10px 12px;font-size:14px}
+  .preview-bar{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  #out{padding:12px 0}
+  /* sheets */
+  .sheet{background:#fff;margin:12px auto;position:relative;overflow:hidden}
+  .a4{width:210mm;height:297mm;padding:10mm;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:88mm;gap:6mm}
+  .a4.one{grid-template-columns:1fr;grid-auto-rows:auto}
+  .a4.badges{padding:13.5mm 5mm;grid-template-columns:100mm 100mm;grid-auto-rows:135mm;gap:0;justify-content:center}
+  .a4.a5x2{padding:0;grid-template-columns:1fr;grid-auto-rows:148.5mm;gap:0}
+  .solo-badge{width:100mm;height:135mm}
+  .solo-a5{width:210mm;height:148mm}
+  /* badge */
+  .badge{width:100mm;height:135mm;position:relative;background:#fff;display:flex;flex-direction:column;align-items:center;outline:0.2mm dashed #ccc;overflow:hidden}
+  .badge .band{position:absolute;left:0;top:0;width:100%;height:38mm;background:var(--tl)}
+  .badge .band svg,.a5 .band svg{position:absolute;left:0;bottom:-1px;width:100%;height:6mm}
+  .badge .logo{position:relative;margin-top:5mm;height:13mm}
+  .badge .theme{position:relative;margin-top:2mm;font-weight:700;font-size:9pt;letter-spacing:.06em;color:var(--tc)}
+  .badge .ev{position:relative;font-size:7.5pt;color:var(--muted)}
+  .badge .first{margin-top:12mm;font-weight:700;font-size:28pt;line-height:1}
+  .badge .last{font-size:14pt;margin-top:1mm}
+  .badge .pill{margin-top:3mm;background:var(--tc);color:#fff;font-weight:700;font-size:11pt;letter-spacing:.04em;padding:1.2mm 6mm;border-radius:99px;text-transform:uppercase}
+  .badge .qr img{width:44mm;height:44mm;margin-top:6mm;display:block}
+  .badge .code{font-family:'IBM Plex Mono',monospace;font-size:7pt;color:var(--muted);margin-top:1mm}
+  .foot{position:absolute;left:0;bottom:0;width:100%;height:10mm;background:var(--tc);color:#fff;font-weight:700;font-size:8pt;display:flex;align-items:center;justify-content:center;letter-spacing:.06em}
+  .foot svg{position:absolute;left:0;top:-3mm;width:100%;height:4mm}
+  /* A5 landscape room card */
+  .a5{width:210mm;height:148mm;position:relative;background:#fff;display:grid;grid-template-columns:1fr 70mm;outline:0.2mm dashed #ccc;overflow:hidden}
+  .a5 .left{position:relative;padding:0 0 12mm}
+  .a5 .band{position:relative;background:var(--tl);padding:7mm 10mm 10mm}
+  .a5 .band .logo{height:12mm}
+  .a5 .band .theme{margin-top:2mm;font-weight:700;font-size:10pt;letter-spacing:.06em;color:var(--tc)}
+  .a5 h1{font-family:'Fraunces',serif;font-size:30pt;line-height:1.05;margin:1mm 0 0}
+  .a5 .sub{color:var(--muted);font-size:11pt}
+  .a5 .roomno{display:inline-block;margin-top:2mm;background:var(--tc);color:#fff;font-weight:700;padding:1mm 4mm;border-radius:99px;font-size:11pt}
+  .a5 .plan{padding:4mm 10mm 0;display:grid;grid-template-columns:16mm 1fr;row-gap:1.4mm;font-size:10.5pt}
+  .a5 .plan .h{grid-column:1/-1;font-weight:700;font-size:9pt;letter-spacing:.08em;color:var(--tc);margin-bottom:1mm}
+  .a5 .plan b{font-weight:700}
+  .a5 .right{position:relative;background:var(--tl);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2mm;padding:6mm 6mm 14mm;text-align:center}
+  .a5 .right .msg{font-family:'Fraunces',serif;font-weight:700;font-size:15pt;color:var(--tc);line-height:1.15}
+  .a5 .right .qr img{width:46mm;height:46mm;display:block;background:#fff;padding:2mm;border-radius:3mm}
+  .a5 .right .how{font-size:9pt;color:var(--muted)}
+  .a5 .right .code{font-family:'IBM Plex Mono',monospace;font-size:7pt;color:var(--muted)}
+  /* generic cards (decks, sites, tents) */
+  .card{border:0.6mm solid var(--line);border-radius:5mm;padding:5mm 6mm;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;overflow:hidden;position:relative}
+  .card .top{font-size:9pt;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--tc,var(--accent))}
+  .card .big{font-family:'Fraunces',serif;font-weight:700;font-size:20pt;line-height:1.05}
+  .card .qr img{width:40mm;height:40mm;display:block}
+  .card .how{font-size:8.5pt;color:var(--muted)}
+  .card .desc{font-size:11pt;line-height:1.35;text-align:left}
+  .sf{margin-top:2mm;padding-top:1.5mm;border-top:0.3mm dashed #bbb;width:100%;display:flex;align-items:center;justify-content:center;gap:2mm;font-size:7.5pt;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#555}
+  .sf img{height:4.5mm}
   .tent{display:grid;grid-template-columns:1fr 34mm;gap:4mm;align-items:start;text-align:left}
   .tent .qr img{width:32mm;height:32mm}
   .site{border-top:3mm solid var(--tc);border-radius:4mm;padding:8mm;font-size:13pt;line-height:1.5}
-  .site h2{font-family:'Bricolage Grotesque',Arial,sans-serif;font-size:24pt;margin:0 0 4mm}
-  .site ul{margin:0;padding-left:6mm}
-  .poster{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10mm;min-height:270mm;text-align:center}
-  .poster h1{font-family:'Bricolage Grotesque',Arial,sans-serif;font-weight:800;font-size:44pt;margin:0;line-height:1}
-  .poster .url{font-family:'Bricolage Grotesque',Arial,sans-serif;font-weight:800;font-size:30pt;color:var(--accent)}
-  .poster .qr img{width:120mm;height:120mm}
-  .tc1{--tc:var(--t1)} .tc2{--tc:var(--t2)} .tc3{--tc:var(--t3)}
-  @media print{body{background:#fff}.bar{display:none}.page{margin:0;page-break-after:always}@page{size:A4;margin:0}}
-  @media screen and (max-width:820px){.page{width:100%;min-height:0;grid-template-columns:1fr;grid-auto-rows:auto}}
+  .site h2{font-family:'Fraunces',serif;font-size:24pt;margin:0 0 4mm}
+  .poster{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9mm;min-height:270mm;text-align:center}
+  .poster h1{font-family:'Fraunces',serif;font-weight:700;font-size:44pt;margin:0;line-height:1}
+  .poster .url{font-weight:700;font-size:28pt;color:var(--accent)}
+  .poster .qr img{width:115mm;height:115mm}
+  .scen{border-top:4mm solid var(--accent);padding:12mm;display:flex;flex-direction:column;gap:5mm}
+  .scen h2{font-family:'Fraunces',serif;font-size:30pt;margin:0}
+  .scen p{font-size:14pt;line-height:1.5;margin:0}
+  @media print{
+    body{background:#fff}
+    .hub,.preview-bar{display:none !important}
+    #out{padding:0}
+    .sheet{margin:0;page-break-after:always;break-after:page}
+    .badge,.a5{outline:0}
+  }
+  @media screen and (max-width:820px){.sheet{transform-origin:top left}}
 </style>
+<style id="page">@page{size:A4;margin:0}</style>
 </head>
 <body>
-<div class="bar">
-  <strong>Print</strong>
-  <label for="s-poster"><input id="s-poster" type="checkbox" data-s="poster" checked> Join poster</label>
-  <label for="s-rooms"><input id="s-rooms" type="checkbox" data-s="rooms" checked> Name badges (Day 1)</label>
-  <label for="s-beds"><input id="s-beds" type="checkbox" data-s="beds" checked> Room welcome cards (Day 1)</label>
-  <label for="s-spots"><input id="s-spots" type="checkbox" data-s="spots" checked> WAP decks (1 per team leader)</label>
-  <label for="s-sites"><input id="s-sites" type="checkbox" data-s="sites" checked> Site cards (shawish)</label>
-  <label for="s-tents"><input id="s-tents" type="checkbox" data-s="tents" checked> Tent cards</label>
-  <button id="print">Print</button>
+<div class="hub" id="hub">
+  <div class="row" style="justify-content:space-between"><img src="/logo.png" alt="WaSH Sector Lebanon" style="height:40px"><a class="btn" href="/host">Back to host</a></div>
+  <h1>Print day checklist</h1>
+  <p class="muted" style="margin:0">Everything to print for Where the Waters Meet. Tick each item once printed; the ticks stay on this computer.</p>
+  <section class="box" id="roomsBox"><p class="muted">Loading…</p></section>
+  <section class="box"><h2>From this site</h2><div id="items"></div></section>
+  <section class="box"><h2>Not on this site</h2><div id="others"></div></section>
 </div>
-<div id="out"><p style="padding:20px">Loading…</p></div>
+<div class="preview-bar" id="pbar" hidden>
+  <button class="btn" id="back">← Back to the checklist</button>
+  <strong id="ptitle"></strong>
+  <span class="row" id="pmode"></span>
+  <button class="btn primary" id="go">Print</button>
+  <span class="small muted" id="phint"></span>
+</div>
+<div id="out"></div>
 <div id="tmp" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -60,9 +128,8 @@
 <script src="/sap.js"></script>
 <script>
 (async function () {
-  const { $, esc, rows } = WR;
-  $('#print').addEventListener('click', () => window.print());
-  if (!WR.configured) { $('#out').innerHTML = '<p style="padding:20px">Add the Supabase details in config.js first.</p>'; return; }
+  const { $, esc, rows, rpc } = WR;
+  if (!WR.configured) { $('#hub').innerHTML = '<p>Add the Supabase details in config.js first.</p>'; return; }
   const cache = {};
   function qr(text) {
     if (cache[text]) return cache[text];
@@ -70,35 +137,100 @@
     new QRCode(t, { text, width: 512, height: 512, correctLevel: QRCode.CorrectLevel.M });
     const c = t.querySelector('canvas'); return (cache[text] = c ? c.toDataURL('image/png') : '');
   }
+  const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
   const host = location.host.replace(/^www\./, ''); const O = location.origin;
-  const [cards, spots, tents, teams] = await Promise.all([rows('hunt_cards', (q) => q.order('position')), rows('hunt_spots', (q) => q.order('position')), rows('sap_tents', (q) => q.order('team_id').order('number')), rows('teams', (q) => q.order('id'))]);
-  const tname = (id) => (teams.find((t) => t.id === id) || {}).name || 'Team ' + id;
-  const pages = (items, per, cls, fn) => { let h = ''; for (let i = 0; i < items.length; i += per) h += `<section class="page ${cls || ''}">${items.slice(i, i + per).map(fn).join('')}</section>`; return h; };
-
-  const S = {
-    poster: () => `<section class="page one"><div class="poster"><img src="/logo.png" alt="WaSH Sector Lebanon" style="height:22mm;width:auto"><div class="top">${esc(WR.cfg.eventName)}</div><h1>Scan to join the game</h1><div class="qr"><img src="${qr(O + '/')}" alt="QR code to join"></div><div class="url">${esc(host)}</div></div></section>`,
-    rooms: () => pages(cards.filter((c) => /^R\d/.test(c.code)), 6, '', (c) => `<div class="card ${c.team_id ? 'tc' + ((c.team_id - 1) % 3 + 1) : ''}" style="${c.team_id ? 'border-color:var(--tc)' : ''}"><div class="top" style="${c.team_id ? 'color:var(--tc)' : ''}">${c.team_id ? esc(tname(c.team_id)) : 'WASH Retreat'}</div><div class="room" style="border:0;font-size:20pt">${c.holder ? esc(c.holder) : '______________'}</div>
-      <div class="qr"><img src="${qr(O + '/card?c=' + encodeURIComponent(c.code))}" alt="QR code for ${esc(c.code)}"></div><div class="code" style="font-size:10pt">${esc(c.code)}</div>
-      <div class="sf"><img src="/logo.png" alt="" style="height:5mm;width:auto;vertical-align:middle;margin-right:2mm">WASH Coordination Team Retreat · 22–23 Oct 2026</div></div>`),
-    beds: () => pages(cards.filter((c) => /^H\d/.test(c.code)), 4, '', (c) => `<div class="card ${c.team_id ? 'tc' + ((c.team_id - 1) % 3 + 1) : ''}" style="${c.team_id ? 'border-color:var(--tc)' : ''}"><div class="top" style="${c.team_id ? 'color:var(--tc)' : ''}">WASH Sector Coordination Team Retreat</div>
-      <div class="room" style="border:0;font-size:18pt">Welcome, ${esc((c.holder || '').split(' ')[0] || 'friend')}!</div>
-      <div class="how" style="font-size:10pt;line-height:1.4">Rest well. At 17:00 we drive to Wadi Chamsine: ATV at sunset, then dinner together.<br>Bonus: scan the code and answer. A right answer gives ${esc(tname(c.team_id))} 2 points.</div>
-      <div class="qr"><img src="${qr(O + '/card?c=' + encodeURIComponent(c.code))}" alt="QR code for ${esc(c.code)}"></div><div class="code" style="font-size:10pt">${esc(c.code)}</div>
-      <div class="sf"><img src="/logo.png" alt="" style="height:5mm;width:auto;vertical-align:middle;margin-right:2mm">Day 1 · Room welcome card · ${esc(c.holder || '')}</div></div>`),
-    spots: () => teams.map((t) => pages(spots, 6, '', (s) => `<div class="card"><div class="top">${esc(tname(t.id))} deck · ${esc(s.grp)}</div><div class="big">${esc(s.title)}</div>
-      <div class="desc">${esc(s.description)}</div><div class="qr"><img src="${qr(O + '/spot?c=' + encodeURIComponent(s.code))}" alt="QR code for ${esc(s.code)}"></div><div class="how">Card ${esc(s.code)} · scan only if it answers one of your clues</div><div class="sf"><img src="/logo.png" alt="" style="height:5mm;width:auto;vertical-align:middle;margin-right:2mm">Day 2 · Taanayel · WAP challenge (part 1)</div></div>`)).join(''),
-    sites: () => pages(teams, 1, 'one', (t) => `<div class="site tc${(t.id - 1) % 3 + 1}"><div class="top">WASH SAP test · site card</div><h2>${esc(tname(t.id))} · Site ${t.id}</h2>
-      <p>You meet the shawish at the entrance. This is what he or she tells you and what you see:</p><ul>${(SAP.siteCards[t.id] || []).map((l) => `<li>${esc(l)}</li>`).join('')}</ul>
-      <p class="how">Fill this in the app: ${esc(host)}/sap → Fill the site form.</p><div class="sf"><img src="/logo.png" alt="" style="height:5mm;width:auto;vertical-align:middle;margin-right:2mm">Day 2 · Taanayel · Site test (part 2)</div></div>`),
-    tents: () => pages(tents, 6, '', (t) => `<div class="card tc${(t.team_id - 1) % 3 + 1}" style="border-color:var(--tc)"><div class="top" style="color:var(--tc)">${esc(tname(t.team_id))} · Site ${t.team_id}</div>
-      <div class="tent"><div><div class="big">Tent ${t.number}</div><div class="desc">${esc(t.card)}</div></div><div class="qr"><img src="${qr(O + '/sap?t=' + encodeURIComponent(t.code))}" alt="QR code for tent ${t.number}"></div></div>
-      <div class="how">Scan to open the household form for this tent.</div><div class="sf"><img src="/logo.png" alt="" style="height:5mm;width:auto;vertical-align:middle;margin-right:2mm">Day 2 · Taanayel · Site test (part 2)</div></div>`)
-  };
-  function draw() {
-    $('#out').innerHTML = Object.keys(S).filter((k) => $('#s-' + k).checked).map((k) => S[k]()).join('') || '<p style="padding:20px">Pick what to print above.</p>';
+  let cards, spots, tents, teams;
+  async function load() {
+    [cards, spots, tents, teams] = await Promise.all([rows('hunt_cards', (q) => q.order('position')), rows('hunt_spots', (q) => q.order('position')), rows('sap_tents', (q) => q.order('team_id').order('number')), rows('teams', (q) => q.order('id'))]);
   }
-  document.querySelectorAll('[data-s]').forEach((x) => x.addEventListener('change', draw));
-  draw();
+  await load();
+  const tname = (id) => (teams.find((t) => t.id === id) || {}).name || 'Team ' + id;
+  const tc = (id) => 'tc' + (((id || 1) - 1) % 3 + 1);
+  const badges = () => cards.filter((c) => /^R\d/.test(c.code));
+  const beds = () => cards.filter((c) => /^H\d/.test(c.code));
+  const W = '<svg viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true"><path d="M0 3 C12 0 25 6 37 3 C50 0 62 6 75 3 C87 0 95 5 100 3 V6 H0 Z" fill="#fff"/></svg>';
+  const WF = '<svg viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><path d="M0 2 C12 0 25 4 37 2 C50 0 62 4 75 2 C87 0 95 3 100 2 V4 H0 Z" fill="currentColor"/></svg>';
+  const sf = (t) => `<div class="sf"><img src="/logo.png" alt="">${esc(t)}</div>`;
+
+  const badge = (c) => { const [f, ...l] = (c.holder || '______').split(' ');
+    return `<div class="badge ${tc(c.team_id)}"><div class="band">${W}</div><img class="logo" src="/logo.png" alt="WaSH Sector Lebanon"><div class="theme">WHERE THE WATERS MEET</div><div class="ev">WASH Sector Coordination Team Retreat</div>
+      <div class="first">${esc(f)}</div><div class="last">${esc(l.join(' '))}</div><div class="pill">${esc(tname(c.team_id))}</div>
+      <div class="qr"><img src="${qr(O + '/card?c=' + encodeURIComponent(c.code))}" alt="QR code"></div><div class="code">${esc(c.code)}</div>
+      <div class="foot" style="color:#fff"><span style="position:absolute;left:0;top:-3mm;width:100%;height:4mm;color:var(--tc)">${WF}</span>22–23 OCTOBER 2026</div></div>`; };
+  const bed = (c) => `<div class="a5 ${tc(c.team_id)}"><div class="left"><div class="band"><img class="logo" src="/logo.png" alt="WaSH Sector Lebanon"><div class="theme">WHERE THE WATERS MEET · SAFE HARBOUR</div>
+      <h1>Welcome, ${esc((c.holder || 'friend').split(' ')[0])}!</h1><div class="sub">This room is your safe harbour for tonight.</div>${c.room ? `<div class="roomno">Room ${esc(c.room)}</div>` : ''}${W}</div>
+      <div class="plan"><div class="h">TONIGHT AND TOMORROW</div><b>16:00</b><span>Rest in your room</span><b>17:00</b><span>Drive together to Wadi Chamsine</span><b>17:30</b><span>Rapids at sunset: ATV ride</span><b>19:00</b><span>The Gathering: dinner together</span><b>09:00</b><span>Morning Mist: breakfast until 10:30</span><b>11:00</b><span>Check-out, then the Expedition at the lake</span></div></div>
+      <div class="right"><div class="msg">A message washed up in your room…</div><div class="qr"><img src="${qr(O + '/card?c=' + encodeURIComponent(c.code))}" alt="QR code"></div><div class="how">Scan it and answer:<br>2 points for the ${esc(tname(c.team_id))}.</div><div class="code">${esc(c.code)}</div></div>
+      <div class="foot"><span style="position:absolute;left:0;top:-3mm;width:100%;height:4mm;color:var(--tc)">${WF}</span>DAY 1 · ROOM WELCOME · ${esc(tname(c.team_id).toUpperCase())} · 22–23 OCTOBER 2026</div></div>`;
+  const chunk = (a, n) => { const r = []; for (let i = 0; i < a.length; i += n) r.push(a.slice(i, i + n)); return r; };
+  const a4 = (items, per, fn, cls) => chunk(items, per).map((g) => `<section class="sheet a4 ${cls || ''}">${g.map(fn).join('')}</section>`).join('');
+
+  const SCEN = [['A', 'Renewed escalation', 'Mass displacement in 48 hours. Collective shelters reopen across the country.'], ['B', 'Protracted crisis', 'Funding is cut by half and partners are leaving.'], ['C', 'Return and recovery', 'People go home to damaged water networks.']];
+  const ITEMS = [
+    { k: 'badges', t: 'Name badges', n: () => badges().length + ' badges', size: '100 × 135 mm', modes: [['sheet', 'Badge paper 100 × 135'], ['a4', 'A4, 4 per sheet']],
+      render: (m) => m === 'a4' ? a4(badges(), 4, badge, 'badges') : badges().map((c) => `<section class="sheet solo-badge">${badge(c)}</section>`).join(''),
+      page: (m) => m === 'a4' ? 'A4' : '100mm 135mm', hint: (m) => m === 'a4' ? 'Print at 100% (no "fit to page"), then cut.' : 'Pick the 100 × 135 mm paper size in the print dialog.' },
+    { k: 'beds', t: 'Room welcome cards', n: () => beds().length + ' cards, one per overnight guest', size: 'A5 landscape', modes: [['a5', 'A5 paper'], ['a4', 'A4, 2 per sheet']],
+      render: (m) => m === 'a4' ? a4(beds(), 2, bed, 'a5x2') : beds().map((c) => `<section class="sheet solo-a5">${bed(c)}</section>`).join(''),
+      page: (m) => m === 'a4' ? 'A4' : 'A5 landscape', hint: (m) => m === 'a4' ? 'Print at 100%, then cut across the middle.' : 'Pick A5, landscape, in the print dialog.' },
+    { k: 'poster', t: 'Join poster', n: () => '1 poster (for latecomers without a badge)', size: 'A4',
+      render: () => `<section class="sheet a4 one"><div class="poster"><img src="/logo.png" alt="WaSH Sector Lebanon" style="height:22mm"><div class="card" style="border:0"><div class="top">Where the Waters Meet</div></div><h1>Scan your badge<br>or this code</h1><div class="qr"><img src="${qr(O + '/')}" alt="QR code to join"></div><div class="url">${esc(host)}</div></div></section>` },
+    { k: 'scen', t: 'Flood Watch scenario cards', n: () => '3 cards (A, B, C), to seal in envelopes', size: 'A4',
+      render: () => SCEN.map(([l, h, p]) => `<section class="sheet a4 one"><div class="scen"><img src="/logo.png" alt="" style="height:14mm;align-self:flex-start"><div class="card" style="border:0;padding:0;align-items:flex-start"><div class="top">Flood Watch · Session 3 · Scenario card ${l}</div></div><h2>${esc(h)}</h2><p>${esc(p)}</p><p><strong>Your team has 20 minutes.</strong> Plan the first 72 hours: who coordinates what, which data you need on day 1, and the one IM product that must be ready now.</p></div></section>`).join('') },
+    { k: 'spots', t: 'WAP decks', n: () => teams.length + ' decks × ' + spots.length + ' cards (one per team leader)', size: 'A4',
+      render: () => teams.map((t) => a4(spots, 6, (s) => `<div class="card ${tc(t.id)}"><div class="top">${esc(tname(t.id))} deck · ${esc(s.grp)}</div><div class="big">${esc(s.title)}</div><div class="desc">${esc(s.description)}</div><div class="qr"><img src="${qr(O + '/spot?c=' + encodeURIComponent(s.code))}" alt="QR code"></div>${sf('Day 2 · The Expedition · WAP deck')}</div>`)).join('') },
+    { k: 'sites', t: 'Site cards (the shawish)', n: () => teams.length + ' cards, one per team', size: 'A4',
+      render: () => teams.map((t) => `<section class="sheet a4 one"><div class="site ${tc(t.id)}"><div class="card" style="border:0;padding:0;align-items:flex-start"><div class="top">Site test · site card</div></div><h2>${esc(tname(t.id))} · Site ${t.id}</h2><p>You meet the shawish at the entrance. This is what he or she tells you and what you see:</p><ul>${(SAP.siteCards[t.id] || []).map((l) => `<li>${esc(l)}</li>`).join('')}</ul><p class="how">Fill this in the app: ${esc(host)}/sap → Fill the site form.</p>${sf('Day 2 · The Expedition · Site test')}</div></section>`).join('') },
+    { k: 'tents', t: 'Tent cards', n: () => tents.length + ' cards, ' + Math.round(tents.length / Math.max(1, teams.length)) + ' per team', size: 'A4',
+      render: () => a4(tents, 6, (t) => `<div class="card ${tc(t.team_id)}" style="border-color:var(--tc)"><div class="top">${esc(tname(t.team_id))} · Site ${t.team_id}</div><div class="tent"><div><div class="big">Tent ${t.number}</div><div class="desc">${esc(t.card)}</div></div><div class="qr"><img src="${qr(O + '/sap?t=' + encodeURIComponent(t.code))}" alt="QR code"></div></div>${sf('Day 2 · The Expedition · Site test')}</div>`) }
+  ];
+  const OTHERS = [['agenda', 'Agenda', 'From the Retreat Room Layout canvas (Agenda artboard). Remove TENTATIVE first if it is final.'], ['layout', 'Room setup for the hotel', 'Retreat Room Layout canvas, first artboard. Send or print for the hotel.'], ['referrals', 'Referrals tab extract × 3', 'Murky Waters (data detective): one printed extract per team.'], ['postcards', 'Postcards for the letter to your future self', 'Ripples, closing at Chams.']];
+
+  function roomsBox() {
+    const B = beds(); const filled = B.filter((c) => c.room).length; const ans = store.get('wr-rooms-answer');
+    const pin = WR.getPin && WR.getPin();
+    let body = `<h2>First: do you have the room numbers?</h2><p class="small muted" style="margin:0">They go on the room welcome cards. Without them the cards print with no room line.</p>
+      <div class="row"><button class="btn" data-ans="yes" aria-pressed="${ans === 'yes'}">Yes, I have them</button><button class="btn" data-ans="no" aria-pressed="${ans === 'no'}">Not yet: print without</button></div>`;
+    if (ans === 'yes') {
+      body += pin ? `<form id="rf" class="stack" style="display:flex;flex-direction:column;gap:10px"><div class="rooms">${B.map((c) => `<label for="r-${c.id}"><input id="r-${c.id}" name="${c.id}" value="${esc(c.room || '')}" placeholder="Room" inputmode="numeric"> ${esc(c.holder)}</label>`).join('')}</div><div class="row"><button class="btn primary">Save room numbers</button><span class="small muted">${filled} of ${B.length} filled</span></div></form>`
+        : '<p class="notice">Open the host panel on this computer first (it keeps you signed in), then come back here to type the room numbers.</p>';
+    } else if (ans === 'no') body += `<p class="notice" style="margin:0">OK: the room cards print without room numbers.${filled ? ` ${filled} card(s) still have a number saved; choose Yes to clear them.` : ''}</p>`;
+    $('#roomsBox').innerHTML = body;
+  }
+  function hub() {
+    roomsBox();
+    $('#items').innerHTML = ITEMS.map((it) => `<div class="item"><input type="checkbox" data-done="${it.k}" aria-label="${esc(it.t)} printed" ${store.get('wr-printed-' + it.k) ? 'checked' : ''}><div><strong>${esc(it.t)}</strong><span class="small muted">${esc(it.n())} · ${esc(it.size)}</span></div><button class="btn primary" data-open="${it.k}">Preview and print</button></div>`).join('');
+    $('#others').innerHTML = OTHERS.map(([k, t, d]) => `<div class="item"><input type="checkbox" data-done="${k}" aria-label="${esc(t)} printed" ${store.get('wr-printed-' + k) ? 'checked' : ''}><div><strong>${esc(t)}</strong><span class="small muted">${esc(d)}</span></div><span></span></div>`).join('');
+  }
+  let cur = null, mode = null;
+  function open(k, m) {
+    cur = ITEMS.find((x) => x.k === k); mode = m || (cur.modes ? cur.modes[0][0] : null);
+    $('#hub').hidden = true; $('#pbar').hidden = false; $('#ptitle').textContent = cur.t;
+    $('#pmode').innerHTML = (cur.modes || []).map(([v, l]) => `<button class="btn" data-mode="${v}" aria-pressed="${v === mode}">${esc(l)}</button>`).join('');
+    $('#phint').textContent = cur.hint ? cur.hint(mode) : 'A4, print at 100%.';
+    $('#page').textContent = `@page{size:${cur.page ? cur.page(mode) : 'A4'};margin:0}`;
+    $('#out').innerHTML = cur.render(mode);
+    window.scrollTo(0, 0);
+  }
+  function close() { $('#hub').hidden = false; $('#pbar').hidden = true; $('#out').innerHTML = ''; $('#page').textContent = '@page{size:A4;margin:0}'; hub(); }
+  document.addEventListener('click', async (e) => {
+    const t = e.target.closest('button,input'); if (!t) return;
+    if (t.dataset.open) open(t.dataset.open);
+    else if (t.dataset.mode) open(cur.k, t.dataset.mode);
+    else if (t.id === 'back') close();
+    else if (t.id === 'go') { window.print(); store.set('wr-printed-' + cur.k, '1'); }
+    else if (t.dataset.done) store.set('wr-printed-' + t.dataset.done, t.checked ? '1' : '');
+    else if (t.dataset.ans) { store.set('wr-rooms-answer', t.dataset.ans); roomsBox(); }
+  });
+  document.addEventListener('submit', async (e) => {
+    if (e.target.id !== 'rf') return; e.preventDefault();
+    const fd = new FormData(e.target); const pin = WR.getPin();
+    try {
+      for (const [id, v] of fd.entries()) { const c = cards.find((x) => x.id === id); if (c && (c.room || '') !== String(v).trim()) await rpc('host_save_card', { p_pin: pin, p_id: id, p_data: { room: String(v).trim() } }); }
+      await load(); roomsBox(); WR.toast('Room numbers saved');
+    } catch (ex) { WR.toast(ex.message, 4000); }
+  });
+  hub();
 })();
 </script>
 </body>

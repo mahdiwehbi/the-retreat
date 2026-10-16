@@ -97,7 +97,7 @@
   /* ---------- shell ---------- */
   function boot() {
     app.innerHTML = `<header class="spread"><div class="stack" style="gap:2px"><span class="eyebrow">${esc(WR.cfg.eventName)}</span><h1 style="font-size:26px">Host panel</h1></div>
-      <div class="row"><span id="hdr" class="small muted"></span><a class="btn small" href="/screen" target="_blank" rel="noopener">Open the projector screen</a></div></header>
+      <div class="row"><span id="hdr" class="small muted"></span><a class="btn small" href="/print" target="_blank" rel="noopener">Print checklist</a><a class="btn small" href="/screen" target="_blank" rel="noopener">Open the projector screen</a></div></header>
       <nav class="tabs" id="tabs"></nav><div id="tab"></div>`;
     paintTabs();
     loadKeys().catch(() => {});
@@ -272,7 +272,7 @@
         return `<section class="card"><h2 style="font-size:18px">Who gets which card (Day 1)</h2><p class="muted small" style="margin:0">One card per person, 2 letters each. Every team's 6 cards spell the whole word. Type each name, then print the person cards: the name is printed on the card.</p>
         <form data-form="holders" class="stack">${D.teams.map((t) => `<div class="stack" style="gap:6px"><strong class="${teamClass(t.id)}"><span class="team-dot"></span> ${esc(t.name)}</strong>${R.filter((c) => c.team_id === t.id).map((c) => `<div class="row"><code style="width:3em">${esc(c.code)}</code><strong style="width:3.2em;letter-spacing:.1em">${esc((D.secret[c.letter_index] || '') + (D.secret[c.letter_index2] || ''))}</strong><input name="h-${c.id}" value="${esc(c.holder || '')}" placeholder="Name" aria-label="Name for card ${esc(c.code)}" maxlength="60" style="flex:1 1 160px"></div>`).join('')}</div>`).join('')}
         <button class="btn primary">Save names</button></form></section>`; })()}
-      <section class="card"><div class="spread"><h2 style="font-size:18px">Cards (${C.length})</h2><div class="row"><button class="btn small" data-do="addcard">+ Add card</button><a class="btn small primary" href="/print" target="_blank" rel="noopener">Print cards with QR codes</a></div></div></section>
+      <section class="card"><div class="spread"><h2 style="font-size:18px">Cards (${C.length})</h2><div class="row"><button class="btn small" data-do="addcard">+ Add card</button><a class="btn small primary" href="/print" target="_blank" rel="noopener">Print checklist</a></div></div></section>
       ${C.map(ed).join('')}
       <section class="card"><h2 style="font-size:18px">WAP cards for the lake (${(D.spots || []).length})</h2><p class="muted small" style="margin:0">Printed with their QR codes. A "find" clue is solved by scanning one of its right cards.</p>
         <div class="tablewrap"><table><tbody>${(D.spots || []).map((sp) => `<tr><td><code>${esc(sp.code)}</code></td><td>${esc(sp.grp)}</td><td>${esc(sp.description)}</td></tr>`).join('')}</tbody></table></div></section>
