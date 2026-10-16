@@ -270,7 +270,7 @@
         case 'screen': await act('host_set_state', { p_patch: { screen: v } }); break;
         case 'phase': await act('host_set_state', { p_patch: { phase: v } }); break;
         case 'show': await act('host_set_state', { p_patch: { activity_id: id, screen: 'activity' } }); break;
-        case 'showopen': await act('host_set_state', { p_patch: { activity_id: id, screen: 'activity' } }); await act('host_set_state', { p_patch: { phase: 'open' } }); break;
+        case 'showopen': await act('host_set_state', { p_patch: { activity_id: id, screen: 'activity', phase: 'open' } }, 'Answers are open'); break;
         case 'clear': await act('host_clear_responses', { p_activity: id }, 'Answers cleared'); break;
         case 'podium': await act('host_set_state', { p_patch: { podium_step: Number(v) } }); break;
         case 'addact': {
