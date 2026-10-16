@@ -89,6 +89,13 @@
   .poster h1{font-family:'Fraunces',serif;font-weight:700;font-size:44pt;margin:0;line-height:1}
   .poster .url{font-weight:700;font-size:28pt;color:var(--accent)}
   .poster .qr img{width:115mm;height:115mm}
+  .agenda h3{margin:5mm 0 1.5mm;font-size:13pt}
+  .ag{display:flex;flex-direction:column;border-top:0.5mm solid var(--ink)}
+  .ag>div{display:grid;grid-template-columns:28mm 1fr 46mm;gap:3mm;padding:1.8mm 2mm;border-bottom:0.2mm solid #d6e0e2;font-size:10.5pt}
+  .ag>div span:last-child{color:var(--muted)}
+  .ag>div.mv{background:#FFE9B8;font-weight:700}
+  .ag>div.mv span:last-child{color:var(--ink)}
+  .key{display:inline-block;width:4mm;height:4mm;background:#FFE9B8;border:0.2mm solid #E0B95A;vertical-align:middle}
   .scen{border-top:4mm solid var(--accent);padding:12mm;display:flex;flex-direction:column;gap:5mm}
   .scen h2{font-family:'Fraunces',serif;font-size:30pt;margin:0}
   .scen p{font-size:14pt;line-height:1.5;margin:0}
@@ -168,6 +175,31 @@
   const chunk = (a, n) => { const r = []; for (let i = 0; i < a.length; i += n) r.push(a.slice(i, i + n)); return r; };
   const a4 = (items, per, fn, cls) => chunk(items, per).map((g) => `<section class="sheet a4 ${cls || ''}">${g.map(fn).join('')}</section>`).join('');
 
+  // The full agenda. mv = a time to be somewhere or to move: highlighted.
+  const AGENDA = [
+    ['Day 1 · Thursday 22 October', [
+      ['10:00', 'Arrive at the hotel and scan your badge at the welcome', 'Hotel meeting room', 1],
+      ['10:00–10:30', 'The Source · opening', 'Meeting room'], ['10:30–12:00', 'Upstream · the war response', 'Meeting room'],
+      ['12:00–12:15', 'Water Break · coffee and quiz', 'Beside the meeting room'],
+      ['12:15–14:00', 'Pipes & Pumps · Murky Waters · Flood Watch', 'Meeting room'],
+      ['14:00', 'Lunch at the restaurant · pick up your room key', 'Hotel restaurant', 1],
+      ['15:00', 'Back in the meeting room', 'Meeting room', 1],
+      ['15:00–16:00', 'Message in a Bottle · Deep Waters', 'Meeting room'],
+      ['16:00', 'Back to your room: rest', 'Hotel', 1],
+      ['17:00', 'Gather at the hotel entrance · drive to Wadi Chamsine in our own cars', 'Hotel entrance', 1],
+      ['17:30–18:30', 'Rapids at Sunset · ATV ride', 'Wadi Chamsine'], ['19:00–21:30', 'The Gathering · dinner', 'Wadi Chamsine'],
+      ['21:30', 'Drive back to the hotel · free evening', 'Wadi Chamsine → Hotel', 1]]],
+    ['Day 2 · Friday 23 October', [
+      ['09:00–10:30', 'Breakfast · Morning Mist', 'Hotel', 1],
+      ['11:00', 'Checked out, bags in the cars · gather at the hotel entrance · drive to Taanayel Lake', 'Hotel entrance', 1],
+      ['11:30–13:30', 'The Expedition · WAP challenge and site test', 'Taanayel Lake'],
+      ['13:30', 'Gather at the cars · drive to Chams', 'Taanayel Lake', 1],
+      ['14:00–16:00', 'Back to Shore · Ripples · lunch, bowling, awards and closing', 'Chams'],
+      ['16:00', 'Departure home', 'Chams', 1]]]];
+  const agendaSheet = () => `<section class="sheet a4 one" style="padding:12mm 14mm"><div class="agenda">
+    <div class="row" style="justify-content:space-between;align-items:flex-end;border-bottom:0.8mm solid var(--accent);padding-bottom:3mm"><div><div style="font-size:9pt;font-weight:700;letter-spacing:.1em;color:var(--accent)">AGENDA · WASH SECTOR COORDINATION TEAM RETREAT</div><div style="font-family:Fraunces,serif;font-size:28pt;font-weight:700;line-height:1.05">Where the Waters Meet</div><div style="color:var(--muted)">22–23 October 2026 · Herons, Kingfishers, Flamingos</div></div><img src="/logo.png" alt="WaSH Sector Lebanon" style="height:15mm"></div>
+    ${AGENDA.map(([d, rs]) => `<h3>${esc(d)}</h3><div class="ag">${rs.map(([t, a, pl, mv]) => `<div class="${mv ? 'mv' : ''}"><b>${esc(t)}</b><span>${mv ? '➜ ' : ''}${esc(a)}</span><span>${esc(pl)}</span></div>`).join('')}</div>`).join('')}
+    <div class="row small" style="margin-top:4mm;gap:6mm"><span><span class="key"></span> Be there, or we move: times to watch</span><span>Contact: Dr. Mahdi Wehbi, 70319729</span></div></div></section>`;
   const SCEN = [['A', 'Renewed escalation', 'Mass displacement in 48 hours. Collective shelters reopen across the country.'], ['B', 'Protracted crisis', 'Funding is cut by half and partners are leaving.'], ['C', 'Return and recovery', 'People go home to damaged water networks.']];
   const ITEMS = [
     { k: 'badges', t: 'Name badges', n: () => badges().length + ' badges', size: '100 × 135 mm', modes: [['sheet', 'Badge paper 100 × 135'], ['a4', 'A4, 4 per sheet']],
@@ -176,6 +208,7 @@
     { k: 'beds', t: 'Room welcome cards', n: () => beds().length + ' cards, one per overnight guest', size: 'A5 landscape', modes: [['a5', 'A5 paper'], ['a4', 'A4, 2 per sheet']],
       render: (m) => m === 'a4' ? a4(beds(), 2, bed, 'a5x2') : beds().map((c) => `<section class="sheet solo-a5">${bed(c)}</section>`).join(''),
       page: (m) => m === 'a4' ? 'A4' : 'A5 landscape', hint: (m) => m === 'a4' ? 'Print at 100%, then cut across the middle.' : 'Pick A5, landscape, in the print dialog.' },
+    { k: 'agenda', t: 'Participant agenda', n: () => '1 page, one per person (18), with the times to be ready or to move highlighted', size: 'A4', render: agendaSheet },
     { k: 'poster', t: 'Join poster', n: () => '1 poster (for latecomers without a badge)', size: 'A4',
       render: () => `<section class="sheet a4 one"><div class="poster"><img src="/logo.png" alt="WaSH Sector Lebanon" style="height:22mm"><div class="card" style="border:0"><div class="top">Where the Waters Meet</div></div><h1>Scan your badge<br>or this code</h1><div class="qr"><img src="${qr(O + '/')}" alt="QR code to join"></div><div class="url">${esc(host)}</div></div></section>` },
     { k: 'scen', t: 'Flood Watch scenario cards', n: () => '3 cards (A, B, C), to seal in envelopes', size: 'A4',
