@@ -71,6 +71,7 @@
       ${other || (card.holder && me.name !== card.holder) ? `<p class="notice bad" style="margin:0">This badge is ${esc(card.holder || 'someone else')}'s. This phone is in the game as ${esc(me.name)}.</p><button class="btn block" data-act="iam">I am ${esc(card.holder)}: use my badge on this phone</button>` : ''}
       <p class="muted small" style="margin:0">Keep your badge with you all day.</p>
       <a class="btn primary block" href="/">Open the game</a></section>`;
+    if (fresh && !other) setTimeout(() => location.replace('/'), 3500);
     const b = app.querySelector('[data-act="iam"]');
     if (b) b.addEventListener('click', async () => { try { me = await rpc('badge_checkin', { p_code: card.code }); WR.setMe(me); load(); } catch (e) { toast(e.message, 4000); } });
   }
