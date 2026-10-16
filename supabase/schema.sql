@@ -658,12 +658,21 @@ begin
   end if;
 end $$;
 
--- 9) Secret word and host passphrase ---------------------------------------------------
--- Change CHANGE-THIS-PASSPHRASE to your own passphrase (8+ characters) before running.
--- To change it later, edit it here and run only this last statement again.
+-- 9) Access for the app's public role ----------------------------------------------------
+
+grant usage on schema public to anon, authenticated;
+grant select on teams, participants, activities, state, responses, team_points, hunt_cards to anon, authenticated;
+grant execute on all functions in schema public to anon, authenticated;
+revoke execute on function _host_ok(text) from public, anon, authenticated;
+revoke execute on function _need_host(text) from public, anon, authenticated;
+revoke execute on function _player(uuid, uuid) from public, anon, authenticated;
+
+-- 10) Secret word and a locked host passphrase ---------------------------------------------
+-- The host passphrase starts as a random value nobody knows. Set your own with
+-- supabase/set-passphrase.sql.
 
 insert into secrets (key, value) values ('hunt_secret', 'RESILIENCE') on conflict (key) do nothing;
 
 insert into secrets (key, value)
-values ('host_pin', extensions.crypt('CHANGE-THIS-PASSPHRASE', extensions.gen_salt('bf')))
-on conflict (key) do update set value = excluded.value;
+values ('host_pin', extensions.crypt(gen_random_uuid()::text, extensions.gen_salt('bf')))
+on conflict (key) do nothing;

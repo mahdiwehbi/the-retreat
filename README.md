@@ -17,7 +17,7 @@ It is a plain static site (no build step) on Vercel, with Supabase as the live d
 
 ## Setup (once)
 
-1. **Supabase**: create a project, open **SQL Editor → New query**, paste `supabase/schema.sql`, change `CHANGE-THIS-PASSPHRASE` at the bottom to your own host passphrase, and run it.
+1. **Supabase**: create a project, open **SQL Editor → New query**, paste `supabase/schema.sql`, run it. Then run `supabase/set-passphrase.sql` with your own host passphrase in place of the placeholder.
 2. Copy the **Project URL** and **anon public key** from **Project Settings → API** into `public/config.js`.
 3. **Vercel**: import this repository. No build settings are needed; `vercel.json` serves the `public` folder. Add the domain under **Settings → Domains**.
 
