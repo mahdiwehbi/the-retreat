@@ -21,7 +21,7 @@
   const app = $('#app');
   if (!WR.configured) { WR.setupNotice(app); return; }
   const code = (new URLSearchParams(location.search).get('c') || '').trim().toUpperCase();
-  let fresh = false, me = null, live = null, card = null, teams = [], photoFile = null, pick = null;
+  let fresh = false, mineCards = [], cur = null, me = null, live = null, card = null, teams = [], photoFile = null, pick = null;
 
   async function start() {
     if (!code) return manual();
@@ -50,7 +50,21 @@
       teams = await rows('teams', (q) => q.order('id'));
       [live] = await rows('state');
     } catch (e) { app.innerHTML = `<section class="card"><p class="notice bad">${esc(e.message)}</p></section>`; return; }
+    if (WR.isLive(live, 'closed')) { WR.thanks(app); return; }
     if (!card) { app.innerHTML = `<section class="card"><h1 style="font-size:24px">Card not found</h1><p class="muted">The code ${esc(code)} is not part of this game. Check the code on the card.</p><a class="btn" href="/card">Type a code</a></section>`; return; }
+    // Letter questions: where is this person? Badge → question 1, then question 2 (B card) if they have no room card.
+    if (card.letter_index != null && WR.isLive(live, card.grp)) {
+      try { mineCards = await rpc('hunt_my_team', { p_pid: me.id, p_token: me.token }); } catch (e) { mineCards = []; }
+      const st = (c) => { const m = mineCards.find((x) => x.code === c.code) || {}; return { done: m.solved || (m.wrong || 0) >= 3, wrong: m.wrong || 0, solved: !!m.solved }; };
+      cur = st(card);
+      if (cur.done && card.grp === 'badges' && /^R/.test(card.code)) {
+        const [b2] = await rows('hunt_cards', (q) => q.eq('code', 'B' + card.code.slice(1)));
+        if (b2 && !st(b2).done) { location.replace('/card?c=' + b2.code); return; }
+        if (me.name === card.holder) { location.replace(WR.isLive(live, 'race') ? '/hunt' : '/'); return; }
+      }
+      if (cur.done) { try { const L = await rpc('race_my_letters', { p_pid: me.id, p_token: me.token }); const x = L.find((y) => y.code === card.code); return done({ status: cur.solved ? 'already' : 'locked', letter: x && x.letter }); } catch (e) {} }
+    }
+    if (card.grp === 'golden') { render(); return; }
     if (card.grp && !WR.isLive(live, card.grp)) {
       // Badge scanned again by its owner: go to whatever the current session is.
       if (card.grp === 'badges' && !fresh && me.name === card.holder) { location.replace('/'); return; }
@@ -104,30 +118,27 @@
         ${card.team_id && card.team_id !== me.team_id ? `<p class="notice bad" style="margin:0">This card belongs to another team. Give it back to ${esc(card.holder || 'its owner')}.</p>` : ''}
         ${resultHtml || ''}
         <form id="cf" class="stack">${form}<button class="btn primary block" type="submit">Submit for ${esc(teamName())}</button></form>
-        <p class="muted small" style="margin:0">${card.letter_index != null ? 'Get it right to win 2 letters for your team. You can try again.' : 'Your team has 3 tries per card. One correct answer counts for the whole team.'}</p>
+        <p class="muted small" style="margin:0">${card.letter_index != null ? `3 tries. This question opens 1 letter of the secret message: 3 points on the first try, then 2, then 1. After 3 wrong tries you still get the letter, with 0 points.${cur && cur.wrong ? ` <strong>${3 - cur.wrong} ${3 - cur.wrong === 1 ? 'try' : 'tries'} left.</strong>` : ''}` : card.grp === 'golden' ? 'Opens when your team has sent the site form and its 3 tents.' : 'Your team has 3 tries per card.'}</p>
       </section>
-      <nav class="foot-links"><a href="/hunt">All clues</a><a href="/">Back to the game</a><a href="/card">Type another code</a></nav>`;
+      <nav class="foot-links"><a href="/hunt">Your letters</a><a href="/">Back to the game</a></nav>`;
     if (photoFile) { const r = new FileReader(); r.onload = () => { const p = $('#prev'); if (p) { p.src = r.result; p.hidden = false; } }; r.readAsDataURL(photoFile); }
   }
 
   function done(res) {
     const t = teamClass(me.team_id);
+    const tile = res.letter ? `<div class="${t}" style="display:flex;justify-content:center"><div class="letter-tile">${esc(res.letter)}</div></div><p style="text-align:center;margin:0">Your letter. Keep it secret until the word race after lunch.</p>` : '';
+    const next = card.grp === 'badges' && /^R/.test(card.code) ? `<a class="btn primary block" href="/card?c=${encodeURIComponent(card.code)}">Continue</a>` : `<a class="btn primary block" href="/hunt">See your letters</a>`;
     if (res.status === 'correct' || res.status === 'already') {
-      const letter = res.letter
-        ? `<div class="${t}" style="display:flex;gap:12px;justify-content:center"><div class="letter-tile">${esc(res.letter)}</div>${res.letter2 ? `<div class="letter-tile">${esc(res.letter2)}</div>` : ''}</div><p style="text-align:center;margin:0">Letters ${Number(res.position) + 1}${res.letter2 ? ' and ' + (Number(res.position2) + 1) : ''} of the secret word. Keep them for your team!</p>`
-        : '';
-      app.innerHTML = `<section class="card" style="text-align:center">
-        <div class="big-msg">${res.status === 'correct' ? 'Well done!' : 'Already found'}</div>
-        <p class="muted" style="margin:0">${res.status === 'correct' ? `${esc(teamName())} gets ${res.points || 1} point${(res.points || 1) === 1 ? '' : 's'}.` : `${esc(teamName())} already solved this card.`}</p>
-        ${letter}
-        <a class="btn primary block" href="/hunt">See your letters</a></section>`;
+      app.innerHTML = `<section class="card" style="text-align:center"><div class="big-msg">${res.status === 'correct' ? 'Right!' : 'Already answered'}</div>
+        <p class="muted" style="margin:0">${res.status === 'correct' && res.points ? `${esc(teamName())} gets ${res.points} point${res.points === 1 ? '' : 's'}.` : ''}</p>${tile}${card.letter_index != null ? next : '<a class="btn primary block" href="/">Back to the game</a>'}</section>`;
       return;
     }
     if (res.status === 'locked') {
-      app.innerHTML = `<section class="card"><div class="big-msg">Card locked</div><p class="muted">Your team used its 3 tries on this card. Find the next one.</p><a class="btn primary block" href="/">Back to the game</a></section>`;
+      app.innerHTML = `<section class="card" style="text-align:center"><div class="big-msg">3 tries used</div><p class="muted" style="margin:0">No points for this one, but here is your letter.</p>${tile}${card.letter_index != null ? next : '<a class="btn primary block" href="/">Back to the game</a>'}</section>`;
       return;
     }
-    render(`<p class="notice bad">Not quite. ${res.left >= 99 ? 'Try again.' : res.left > 0 ? `${res.left} ${res.left === 1 ? 'try' : 'tries'} left for your team.` : ''}</p>`);
+    cur = { done: false, wrong: 3 - (res.left || 0), solved: false };
+    render(`<p class="notice bad">Not quite. ${res.left > 0 ? `${res.left} ${res.left === 1 ? 'try' : 'tries'} left.` : ''}</p>`);
   }
 
   app.addEventListener('click', (e) => {

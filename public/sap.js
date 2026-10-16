@@ -84,7 +84,7 @@ window.SAP = (function () {
     const start = s.first_start ? new Date(s.first_start).getTime() : Math.min(...times);
     const minutes = times.length ? Math.max(0, Math.round((Math.max(...times) - start) / 60000)) : 0;
     return {
-      N, need: sample(N), done: H.length, tents: s.tents, kap: H.filter((h) => h.kap).length,
+      N, need: s.tents || sample(N), done: H.length, tents: s.tents, kap: H.filter((h) => h.kap).length,
       people: H.reduce((a, h) => a + n(h.members), 0), children: H.reduce((a, h) => a + n(h.children), 0),
       elderly: H.reduce((a, h) => a + n(h.elderly), 0), female: count('female_headed', 'Yes'), disability: H.reduce((a, h) => a + n(h.disability), 0),
       hhTanks, cTanks, tanks: hhTanks + cTanks, volume: (hhVol + cVol) / 1000,

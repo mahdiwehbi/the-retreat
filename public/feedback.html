@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Feedback · WASH Retreat</title>
+<meta name="theme-color" content="#0A6E78">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Mono:wght@600&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .stars{display:flex;gap:8px}
+  .stars button{flex:1;min-height:52px;border-radius:12px;border:2px solid var(--line);background:var(--surface);font-weight:800;font-size:20px}
+  .stars button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opts button{text-align:left;min-height:48px;padding:10px 14px;border-radius:12px;border:2px solid var(--line);background:var(--surface);font-weight:600}
+  .opts button[aria-pressed="true"]{border-color:var(--accent);background:var(--soft)}
+  textarea,input[type=text]{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+  .scale{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="polite"><section class="card"><p class="muted">Loading…</p></section></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/lib.js"></script>
+<script>
+(function () {
+  const { $, esc, rpc, rows, toast } = WR;
+  const app = $('#app');
+  if (!WR.configured) { WR.setupNotice(app); return; }
+  let me = null; const f = { form: 0, training: '', suggestions: '', word: '', retreat: 0 };
+  const TRAIN = ['Clear from the game: ready for the field', 'I would like a short training first'];
+  async function start() {
+    const [s] = await rows('state');
+    if (WR.isLive(s, 'closed')) { WR.thanks(app); return; }
+    try { me = await WR.checkMe(); } catch (e) { me = WR.getMe(); }
+    if (!me) return WR.renderJoin(app, (m) => { me = m; check(s); });
+    check(s);
+  }
+  function check(s) {
+    if (!WR.isLive(s, 'feedback')) { app.innerHTML = '<section class="card" style="text-align:center"><div class="big-msg">Patience…</div><p style="margin:0">The feedback form opens at the lake, after the site test.</p><a class="btn primary block" href="/">Open the game</a></section>'; return; }
+    render();
+  }
+  const stars = (k, lo, hi) => `<div class="stars">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-k="${k}" data-v="${n}" aria-pressed="${f[k] === n}">${n}</button>`).join('')}</div><div class="scale"><span>${lo}</span><span>${hi}</span></div>`;
+  function render() {
+    app.innerHTML = `<header class="spread"><span class="eyebrow">Where the Waters Meet · feedback</span></header>
+      <section class="card"><strong>1. The WAP form: how was it?</strong>${stars('form', 'Very hard', 'Very easy')}
+        <div class="opts">${TRAIN.map((t) => `<button type="button" data-k="training" data-v="${esc(t)}" aria-pressed="${f.training === t}">${esc(t)}</button>`).join('')}</div></section>
+      <section class="card"><label for="sug"><strong>2. Suggestions for the form or the tool</strong></label><textarea id="sug" rows="4" maxlength="1000">${esc(f.suggestions)}</textarea></section>
+      <section class="card"><label for="word"><strong>3. How do you feel? The retreat in one word</strong></label><input id="word" type="text" maxlength="40" value="${esc(f.word)}"></section>
+      <section class="card"><strong>4. Rate the retreat</strong>${stars('retreat', 'Not for me', 'Loved it')}</section>
+      <button class="btn primary block" data-send>Send my feedback</button>
+      <nav class="foot-links"><a href="/">Back to the game</a></nav>`;
+  }
+  app.addEventListener('input', (e) => { if (e.target.id === 'sug') f.suggestions = e.target.value; if (e.target.id === 'word') f.word = e.target.value; });
+  app.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-k]'); if (b) { f[b.dataset.k] = b.dataset.k === 'training' ? b.dataset.v : Number(b.dataset.v); render(); return; }
+    if (e.target.closest('[data-send]')) {
+      if (!f.form || !f.retreat) { toast('Please give both ratings (1 and 4).', 3000); return; }
+      try { await rpc('submit_feedback', { p_pid: me.id, p_token: me.token, p_data: f }); app.innerHTML = '<section class="card" style="text-align:center;margin-top:12vh"><div class="big-msg">Thank you!</div><p style="margin:0">Your feedback is in. Enjoy lunch and bowling at Chams.</p></section>'; }
+      catch (ex) { toast(ex.message, 4000); }
+    }
+  });
+  start();
+})();
+</script>
+</body>
+</html>

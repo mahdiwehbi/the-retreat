@@ -115,7 +115,7 @@
     if (!force && typing()) return;
     if (tab === 'questions' && force) await loadKeys().catch(() => {});
     if (tab === 'hunt' && (force || !D.cards)) { await loadCards().catch(() => {}); try { D.finds = await H('host_finds'); D.spots = await rows('hunt_spots', (q) => q.order('position')); } catch (e) {} }
-    if (tab === 'sap' && force) { try { D.sapAcc = await H('host_sap_accuracy'); D.sap = await Promise.all(D.teams.map((t) => rpc('sap_summary', { p_team: t.id }))); } catch (e) {} }
+    if (tab === 'sap' && force) { try { D.sapAcc = await H('host_sap_accuracy'); D.sap = await Promise.all(D.teams.map((t) => rpc('sap_summary', { p_team: t.id }))); D.feedback = await H('host_feedback'); } catch (e) {} }
     if (tab === 'checks' && force) { try { D.checks = await H('host_assessments'); } catch (e) {} }
     const y = window.scrollY;
     el.innerHTML = ({ run: tRun, questions: tQuestions, teams: tTeams, hunt: tHunt, checks: tChecks, sap: tSap, reset: tReset })[tab]();
@@ -306,7 +306,7 @@
   function tSap() {
     const acc = D.sapAcc || []; const sums = D.sap || [];
     return `<div class="stack"><section class="card"><div class="spread"><h2 style="font-size:18px">WASH SAP field test</h2><button class="btn small" data-do="reloadsap">Refresh</button></div>
-      <p class="muted small" style="margin:0">Each team assesses its own site: 1 site card and 10 tent cards (print them from Treasure hunt → Print cards). Accuracy compares the household forms with what is written on the tent cards.</p></section>
+      <p class="muted small" style="margin:0">Each team assesses its own site: 1 site card and 3 tent cards (a sample of 3 of the 10 shelters), plus a practice tent for the briefing. Accuracy compares the household forms with what is written on the tent cards.</p></section>
       <div class="grid2">${D.teams.map((t, i) => { const S = sums[i] ? SAP.summarise(sums[i]) : null; const a = acc.find((x) => x.team_id === t.id) || {};
         return `<section class="card ${teamClass(t.id)}"><h2 style="font-size:18px;display:flex;gap:8px;align-items:center"><span class="team-dot"></span>${esc(t.name)}</h2>
           ${S ? `<div class="tablewrap"><table><tbody>
@@ -314,7 +314,12 @@
             <tr><td>Accuracy vs tent cards</td><td>${a.checked ? Math.round((a.right / a.checked) * 100) + '% (' + a.right + ' of ' + a.checked + ' answers)' : '–'}</td></tr>
             <tr><td>Time from first form to last</td><td>${S.minutes} min</td></tr><tr><td>Collectors</td><td>${Object.entries(S.byCollector).map(([k, v]) => esc(k) + ' ' + v).join(', ') || '–'}</td></tr>
             <tr><td>Tanks (household + community)</td><td>${S.hhTanks} + ${S.cTanks}</td></tr><tr><td>Latrines (inside + outside)</td><td>${S.latIn} + ${S.latOut}</td></tr></tbody></table></div>` : '<p class="muted">No data yet.</p>'}
-          <a class="btn small" href="/sap?team=${t.id}" target="_blank" rel="noopener">Show this team's summary on the projector</a></section>`; }).join('')}</div></div>`;
+          <a class="btn small" href="/sap?team=${t.id}" target="_blank" rel="noopener">Show this team's summary on the projector</a></section>`; }).join('')}</div>
+      ${(() => { const F = D.feedback || []; if (!F.length) return '<section class="card"><h2 style="font-size:18px">Feedback</h2><p class="muted" style="margin:0">No feedback yet.</p></section>';
+        const avg = (k) => (F.reduce((a, x) => a + (Number(x.data[k]) || 0), 0) / F.length).toFixed(1); const train = F.filter((x) => /training/i.test(x.data.training || '')).length;
+        return `<section class="card"><h2 style="font-size:18px">Feedback (${F.length})</h2><div class="row"><span class="badge">Form ${avg('form')} / 5</span><span class="badge">Retreat ${avg('retreat')} / 5</span><span class="badge">${train} want a training</span></div>
+          <p class="small" style="margin:0"><strong>Words:</strong> ${F.map((x) => esc(x.data.word || '')).filter(Boolean).join(' · ') || '–'}</p>
+          <div class="list">${F.filter((x) => x.data.suggestions).map((x) => `<div class="li"><span class="grow">${esc(x.data.suggestions)}</span><span class="small muted">${esc(x.name)}</span></div>`).join('') || '<p class="muted small">No suggestions yet.</p>'}</div></section>`; })()}</div>`;
   }
 
   /* ---------- Reset ---------- */
@@ -327,7 +332,7 @@
   async function move(dir) {
     const steps = WR.flow.build(D.acts); const i = WR.flow.indexOf(steps, D.st); const j = i + dir;
     if (j < 0 || j >= steps.length) return;
-    await act('host_set_state', { p_patch: dir > 0 ? WR.flow.patch(steps[j]) : WR.flow.patchBack(steps[j]) });
+    await act('host_set_state', { p_patch: dir > 0 ? WR.flow.patch(steps[j], D.st) : WR.flow.patchBack(steps[j], D.st) });
   }
   document.addEventListener('keydown', async (e) => {
     if (!pin || tab !== 'run' || /INPUT|TEXTAREA|SELECT/.test((e.target.tagName || ''))) return;

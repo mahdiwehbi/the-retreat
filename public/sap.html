@@ -46,19 +46,22 @@
   const P = new URLSearchParams(location.search);
   const tentCode = (P.get('t') || '').trim().toUpperCase();
   const viewTeam = Number(P.get('team')) || null; // summary on the projector, no sign-in needed
-  let me = null, teams = [], tents = [], summary = null, form = {}, kapOn = false, started = null, mode = P.get('form') === 'site' ? 'site' : tentCode ? 'hh' : 'home';
+  let practiceOnly = false, me = null, teams = [], tents = [], summary = null, form = {}, kapOn = false, started = null, mode = P.get('form') === 'site' ? 'site' : tentCode ? 'hh' : 'home';
 
   async function start() {
     teams = await rows('teams', (q) => q.order('id'));
     if (viewTeam) return live(['sap_households', 'sap_sites'], async () => { summary = await rpc('sap_summary', { p_team: viewTeam }); renderSummaryOnly(); }, 5000);
     try { me = await WR.checkMe(); } catch (e) { me = WR.getMe(); }
     const [s0] = await rows('state');
-    if (!WR.isLive(s0, 'sap')) { app.innerHTML = `<section class="card" style="text-align:center"><div class="eyebrow">Site test</div><div class="big-msg">Patience…</div><p style="margin:0">The site test opens at the lake.</p><a class="btn primary block" href="/">Open the game</a></section>`; return; }
+    if (WR.isLive(s0, 'closed')) { WR.thanks(app); return; }
+    practiceOnly = !WR.isLive(s0, 'sap') && WR.isLive(s0, 'practice');
+    if (!WR.isLive(s0, 'sap') && !practiceOnly) { app.innerHTML = `<section class="card" style="text-align:center"><div class="eyebrow">Site test</div><div class="big-msg">Patience…</div><p style="margin:0">The site test opens at the lake.</p><a class="btn primary block" href="/">Open the game</a></section>`; return; }
     if (!me) return WR.renderJoin(app, (m) => { me = m; boot(); });
     boot();
   }
   async function boot() {
-    tents = await rows('sap_tents', (q) => q.eq('team_id', me.team_id).order('number'));
+    tents = (await rows('sap_tents', (q) => q.eq('team_id', me.team_id).order('number'))).filter((t) => (practiceOnly ? t.number === 0 : t.number > 0));
+    if (practiceOnly && mode === 'home' && tents[0]) { location.replace('/sap?t=' + encodeURIComponent(tents[0].code)); return; }
     if (mode === 'home') live(['sap_households', 'sap_sites'], refresh, 6000); else render();
   }
   async function refresh() { summary = await rpc('sap_summary', { p_team: me.team_id }); if (mode === 'home') render(); }
@@ -85,8 +88,8 @@
     const fields = isSite ? SAP.site : SAP.household;
     app.innerHTML = `
       <header class="spread"><span class="eyebrow">WASH SAP test · ${esc(teamName(me.team_id))}</span><a class="small" href="/sap">Site summary</a></header>
-      <section class="card"><h1 style="font-size:26px">${isSite ? 'Site form · shawish and observation' : `Household form · tent ${tent.number}`}</h1>
-        <p class="muted" style="margin:0">${isSite ? 'Read your team’s site card (the shawish interview) and fill what it says. Household numbers come from the household forms, not from here.' : 'Read the tent card as if you were interviewing the family and observing the shelter.'}</p></section>
+      <section class="card"><h1 style="font-size:26px">${isSite ? 'Site form · shawish and observation' : tent.number === 0 ? 'Practice tent · household form' : `Household form · tent ${tent.number}`}</h1>
+        <p class="muted" style="margin:0">${isSite ? 'Read your team’s site card (the shawish interview) and fill what it says. Household numbers come from the household forms, not from here.' : 'Read the tent card as if you were interviewing the family and observing the shelter. Not sure what a tank, latrine or source is? Scan the matching helper card: it tells you what it is.'}</p></section>
       <form id="sf" class="card" novalidate>${fields.map(fieldHtml).join('')}
         ${isSite ? '' : `<div class="sec">KAP</div><label class="row" for="kapon" style="font-weight:600"><input id="kapon" type="checkbox" ${kapOn ? 'checked' : ''} style="width:auto"> Do the KAP for this household</label>
           <span class="hint">The site needs KAP for a sample of households only. Your summary shows how many are done.</span>${kapOn ? SAP.kap.map(fieldHtml).join('') : ''}`}
@@ -105,7 +108,10 @@
         <div class="row"><a class="btn primary" href="/sap?form=site">${S && S.siteDone ? 'Edit the site form' : 'Fill the site form'}</a></div>
         ${S && S.siteDone ? `<span class="hint">Site form sent${S.siteBy ? ' by ' + esc(S.siteBy) : ''}.</span>` : ''}</section>
       <section class="card"><strong>Tents</strong><span class="hint">Scan a tent card's QR code, or tap a number.</span>
-        <div class="tents">${tents.map((t) => `<a class="${doneSet.has(t.number) ? 'done' : ''}" href="/sap?t=${encodeURIComponent(t.code)}" aria-label="Tent ${t.number}${doneSet.has(t.number) ? ', done' : ''}">${t.number}</a>`).join('')}</div></section>
+        <div class="tents">${tents.map((t) => `<a class="${doneSet.has(t.number) ? 'done' : ''}" href="/sap?t=${encodeURIComponent(t.code)}" aria-label="Tent ${t.number}${doneSet.has(t.number) ? ', done' : ''}">${t.number === 0 ? 'P' : t.number}</a>`).join('')}</div></section>
+      ${S && S.siteDone && S.done >= S.need ? `<section class="card" style="border-color:var(--gold)"><strong>Well done: site and tents sent!</strong>
+        <a class="btn block" href="/card?c=G1" style="border-color:var(--gold)">Golden card unlocked: your team photo (3 points)</a>
+        <a class="btn primary block" href="/feedback">Now the feedback form</a></section>` : ''}
       ${S ? summaryHtml(S) : ''}
       <nav class="foot-links"><a href="/">Back to the game</a></nav>`;
   }
@@ -113,9 +119,9 @@
   function summaryHtml(S) {
     const pct = S.need ? Math.min(100, Math.round((S.done / S.need) * 100)) : 0;
     const list = (rowsArr) => rowsArr.length ? `<table>${rowsArr.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join('')}</table>` : '<span class="hint">No households yet.</span>';
-    return `<section class="card"><div class="spread"><strong>Households</strong><span class="timer">${S.done} / ${S.need} needed</span></div>
+    return `<section class="card"><div class="spread"><strong>Households</strong><span class="timer">${S.done} / ${S.need} tents</span></div>
         <div class="bar" aria-label="${pct}% of the sample"><i style="width:${pct}%"></i></div>
-        <span class="hint">Sample for ${S.N} shelters (80% confidence, 10% margin): ${S.need}. KAP done: ${S.kap}.${S.minutes ? ` Time so far: ${S.minutes} min.` : ''}</span>
+        <span class="hint">The site has ${S.N} shelters; for this exercise we sample ${S.need} of them. KAP done: ${S.kap}.${S.minutes ? ` Time so far: ${S.minutes} min.` : ''}</span>
         ${Object.keys(S.byCollector).length ? `<span class="hint">By collector: ${Object.entries(S.byCollector).map(([k, v]) => `${esc(k)} ${v}`).join(' · ')}</span>` : ''}</section>
       <section class="card"><strong>Site summary (auto-generated)</strong>
         <div class="kpis"><div class="kpi"><b>${S.people}</b><span>people in assessed households</span></div><div class="kpi"><b>${S.children}</b><span>under 18</span></div><div class="kpi"><b>${S.elderly}</b><span>aged 60+</span></div><div class="kpi"><b>${S.female}</b><span>female-headed</span></div>

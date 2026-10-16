@@ -14,6 +14,20 @@
   .top{display:flex;justify-content:space-between;align-items:baseline;gap:1em;flex-wrap:wrap}
   .sess-steps{font-size:1.5em;line-height:1.35;margin:.4em 0 0;padding-left:1.3em;display:flex;flex-direction:column;gap:.45em}
   .sess-steps li::marker{color:var(--accent);font-weight:800}
+  .wcard{background:#fff;color:#1B2430;border-radius:.6em;padding:1em 1.2em;box-shadow:0 .4em 1.4em rgba(0,0,0,.15);transform:rotate(-1.5deg);font-size:.8em;border-top:.5em solid var(--accent)}
+  .wc-top{font-weight:700;letter-spacing:.06em;color:var(--accent);font-size:.75em}.wc-h{font-family:var(--display);font-weight:800;font-size:2em;margin:.2em 0}.wc-sub{color:#5B6573}
+  .wc-ticks{display:flex;flex-direction:column;gap:.5em;margin:.8em 0}.wc-ticks div{display:flex;gap:.6em;align-items:center}.wc-ticks span{flex:0 0 1em;height:1em;border:.12em solid var(--accent);border-radius:.2em}
+  .wc-q{font-weight:700;color:var(--accent);border-top:1px dashed #ccc;padding-top:.6em}
+  .wheel{display:flex;flex-direction:column;align-items:center;gap:1em;margin-block:auto}
+  .wheel .disc{width:9em;height:9em;border-radius:50%;background:conic-gradient(var(--t1) 0 120deg,var(--t2) 120deg 240deg,var(--t3) 240deg 360deg);animation:spin 2.4s cubic-bezier(.15,.8,.25,1) both;border:.3em solid #fff;box-shadow:0 .3em 1em rgba(0,0,0,.2)}
+  @keyframes spin{from{transform:rotate(0)}to{transform:rotate(1980deg)}}
+  .wheel ol{font-size:1.8em;font-weight:800;margin:0;padding-left:1.4em;opacity:0;animation:show .6s 2.3s forwards}
+  @keyframes show{to{opacity:1}}
+  .tpage{display:flex;flex-direction:column;gap:.6em;flex:1;min-height:0;overflow:hidden}
+  .tpage .pr{font-weight:600;color:var(--accent);font-size:1.1em}
+  .tpage .boxes{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:1em;flex:1;min-height:0}
+  .tpage .bx{background:var(--surface);border-top:.3em solid var(--tc);border-radius:.5em;padding:.6em .8em;overflow:hidden;font-size:.85em;white-space:pre-wrap;overflow-wrap:anywhere}
+  .tpage .bx h3{font-size:.8em;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 .3em}
   .kick{font-size:.75em;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
   .ttl{font-family:var(--display);font-weight:800;font-size:2.3em;line-height:1.05;letter-spacing:-.01em;text-wrap:balance;margin:0}
   .main{flex:1;min-height:0;display:flex;flex-direction:column;gap:1em}
@@ -138,7 +152,7 @@
       }
       if (a && a.kind === 'team') D.entries = await rows('team_entries', (q) => q.eq('activity_id', a.id));
     }
-    else if (screen === 'leaderboard') D.resp = await rows('responses', (q) => q.gt('points', 0));
+    else if (screen === 'leaderboard') { const qa = acts.filter((x) => x.kind === 'quiz').map((x) => x.id); D.resp = qa.length ? await rows('responses', (q) => q.in('activity_id', qa)) : []; }
     if (screen === 'teams' || screen === 'podium') D.board = await rpc('scoreboard');
     if (screen === 'hunt') { D.hunt = await rpc('hunt_board'); D.board = await rpc('scoreboard'); }
     paint();
@@ -149,7 +163,7 @@
 
   function foot() {
     const s = curSession();
-    return `<div class="foot"><span class="mini">${qrImg('#qr-mini')}<span>Join at <b>${esc(host)}</b></span></span><span>${s ? 'Day ' + s.day + ' · ' + esc(s.label) + ' · ' + esc(s.title) : esc(WR.cfg.eventName)}</span></div>`;
+    return `<div class="foot"><span>${esc(host)}</span><span>${s ? 'Day ' + s.day + ' · ' + esc(s.label) + ' · ' + esc(s.title) : esc(WR.cfg.eventName)}</span></div>`;
   }
 
   function curSession() {
@@ -158,17 +172,19 @@
     const a = D.acts.find((x) => x.id === D.st.activity_id); return a ? S.of(a.position) : null;
   }
   function vSession() {
+    if (D.st.session_key === 'end') return `<div class="stack" style="gap:.6em;margin-block:auto;align-items:center;text-align:center"><img src="/logo.png" alt="WaSH Sector Lebanon" style="height:3em;width:auto"><h1 class="ttl" style="font-size:3.6em">Thank you for joining!</h1><div style="font-size:1.5em;color:var(--muted)">Where the Waters Meet · WASH Sector Coordination Team Retreat</div></div>`;
     const s = (window.WR_SESSIONS && WR_SESSIONS.get(D.st.session_key)) || null;
     if (!s) return vLobby();
+    if (s.card) return `<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.4em;align-items:center;margin-block:auto"><div class="stack" style="gap:.5em"><div class="kick">Day ${s.day} · ${esc(s.label)} · ${esc(s.time)}</div><h1 class="ttl" style="font-size:3em">${esc(s.title)}</h1>${s.sub ? `<div style="font-size:1.3em;font-weight:600;color:var(--muted)">${esc(s.sub)}</div>` : ''}<ol class="sess-steps" style="font-size:1.2em">${s.show.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>
+      <div class="wcard"><div class="wc-top">WHERE THE WATERS MEET · SAFE HARBOUR</div><div class="wc-h">Welcome, Waterman!</div><div class="wc-sub">This room is your safe harbour for tonight.</div><div class="wc-ticks">${['Be back at <b>15:00 sharp</b> in the meeting room', 'Be down at <b>17:00 sharp</b> to move to Wadi Chamsine', 'Take your breakfast and <b>check out before 11:00</b>', 'We move at <b>11:30 sharp</b> to Taanayel'].map((x) => `<div><span></span>${x}</div>`).join('')}</div><div class="wc-q">A message washed up in your room… scan it</div></div></div>`;
     return `<div class="stack" style="gap:.5em;margin-block:auto"><div class="kick">Day ${s.day} · ${esc(s.label)} · ${esc(s.time)}</div><h1 class="ttl" style="font-size:3.4em">${esc(s.title)}</h1>${s.sub ? `<div style="font-size:1.6em;font-weight:600;color:var(--muted)">${esc(s.sub)}</div>` : ''}
       <ol class="sess-steps">${s.show.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>`;
   }
   function vLobby() {
     const byTeam = D.teams.map((t) => ({ t, ps: D.players.filter((p) => p.team_id === t.id) }));
-    return `<div class="lobby">${qrImg('#qr-src')}<div class="stack" style="gap:.6em;min-width:0">
-      <img src="/logo.png" alt="WaSH Sector Lebanon" style="height:2.4em;width:auto;align-self:flex-start"><div class="kick">${esc(WR.cfg.eventName)}</div><div class="ttl">Scan your badge to join</div>
-      <div class="muted">No badge? Scan this code or open</div><div class="url">${esc(host)}</div>
-      <div class="muted">${D.players.length} joined</div></div></div>
+    return `<div class="stack" style="gap:.6em;min-width:0;margin-bottom:.6em">
+      <img src="/logo.png" alt="WaSH Sector Lebanon" style="height:2.4em;width:auto;align-self:flex-start"><div class="kick">${esc(WR.cfg.eventName)}</div><div class="ttl">Welcome! Scan your badge</div>
+      <div class="muted">${D.players.length} checked in</div></div>
       <div class="teamcols">${byTeam.map(({ t, ps }) => `<div class="teamcol ${teamClass(t.id)}"><h3><span>${esc(t.name)}</span><span class="timer">${ps.length}</span></h3><div class="names">${ps.map((p) => `<span>${esc(p.name)}</span>`).join('')}</div></div>`).join('')}</div>`;
   }
 
@@ -204,6 +220,16 @@
       if (a.kind === 'dots') notes.sort((x, y) => (votes.get(y.id) || 0) - (votes.get(x.id) || 0));
       const legend = `<div class="legend">${tags.map((t, i) => `<span class="n${i}"><i></i>${esc(t)}</span>`).join('')}</div>`;
       return head + legend + `<div class="board">${cols.map((c, i) => `<div class="bcol"><h3>${esc(c)}</h3>${notes.filter((n) => n.col === i).map((n) => `<div class="stick n${n.tag}">${a.kind === 'dots' && votes.get(n.id) ? `<b>${'●'.repeat(Math.min(votes.get(n.id), 8))} ${votes.get(n.id)}</b>` : ''}${esc(n.text)}</div>`).join('')}</div>`).join('')}</div>`;
+    }
+    if (a.kind === 'team' && st.present && st.present.act === a.id) {
+      const pr = st.present; const order = pr.order || [1, 2, 3];
+      if (pr.i < 0) return `<div class="top"><div class="stack" style="gap:.3em;min-width:0"><div class="kick">${esc(a.title)}</div><h1 class="ttl">Who presents first?</h1></div></div><div class="wheel" data-at="${pr.at || ''}"><div class="disc"></div><ol>${order.map((id) => `<li class="${teamClass(id)}" style="color:var(--tc)">${esc(teamName(id))}</li>`).join('')}</ol></div>`;
+      const tid = order[pr.i]; const ti = D.teams.findIndex((t) => t.id === tid); const t = D.teams[ti] || { id: tid, name: teamName(tid) };
+      const o = a.options || {}; const fields = o.fields || []; const e = (D.entries || []).find((x) => x.team_id === tid); const d = (e && e.data) || {};
+      return `<div class="top"><div class="stack" style="gap:.3em;min-width:0"><div class="kick">${esc(a.title)} · presentation ${pr.i + 1} of ${order.length}</div><h1 class="ttl ${teamClass(tid)}" style="color:var(--tc)">${esc(t.name)}</h1></div></div>
+        <div class="tpage ${teamClass(tid)}">${(o.prompts || [])[ti] ? `<div class="pr">${esc(o.prompts[ti])}</div>` : ''}<div class="boxes">${fields.map((f, i) => { const v = d['f' + i]; const tg = f.tags || [];
+          const body = f.type === 'text' ? (v ? esc(v) : '<span class="muted">…</span>') : ((Array.isArray(v) && v.length) ? `<ul style="margin:0;padding-left:1.1em;white-space:normal">${v.map((it) => `<li>${tg.length && tg[it.g] ? `<b>${esc(tg[it.g])}:</b> ` : ''}${esc(it.t)}</li>`).join('')}</ul>` : '<span class="muted">…</span>');
+          return `<div class="bx"><h3>${esc(f.label)}</h3>${body}</div>`; }).join('')}</div></div>`;
     }
     if (a.kind === 'team') {
       const o = a.options || {}; const fields = o.fields || [];
@@ -253,10 +279,11 @@
 
   function vLeaderboard() {
     const tot = new Map();
-    D.resp.forEach((r) => { const e = tot.get(r.participant_id) || { id: r.participant_id, pts: 0, team: r.team_id }; e.pts += r.points; tot.set(r.participant_id, e); });
-    const list = [...tot.values()].sort((a, b) => b.pts - a.pts).slice(0, 10);
+    const asked = new Set(D.resp.filter((r) => r.correct != null).map((r) => r.activity_id)).size;
+    D.resp.forEach((r) => { const e = tot.get(r.participant_id) || { id: r.participant_id, pts: 0, ok: 0, team: r.team_id }; e.pts += r.points || 0; if (r.correct) e.ok++; tot.set(r.participant_id, e); });
+    const list = [...tot.values()].filter((e) => e.pts > 0 || e.ok > 0).sort((a, b) => b.pts - a.pts).slice(0, 10);
     return `<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Quiz</div><h1 class="ttl">Top players</h1></div></div>` +
-      (list.length ? `<div class="lb">${list.map((e, i) => `<div class="lb-row ${teamClass(e.team)} ${i === 0 ? 'first' : ''}"><span class="rk">${i + 1}</span><span class="nm">${esc(playerName(e.id))}</span><span class="pt">${e.pts}</span></div>`).join('')}</div>` : `<div class="empty"><b>No points yet</b>Play a quiz question first.</div>`);
+      (list.length ? `<div class="lb">${list.map((e, i) => `<div class="lb-row ${teamClass(e.team)} ${i === 0 ? 'first' : ''}"><span class="rk">${i + 1}</span><span class="nm">${esc(playerName(e.id))} <span class="muted" style="font-size:.6em">${e.ok}/${asked} correct</span></span><span class="pt">${e.pts}</span></div>`).join('')}</div><div class="muted" style="font-size:.6em">Points: a right answer scores 500 to 1000, more when you answer faster.</div>` : `<div class="empty"><b>No points yet</b>Play a quiz question first.</div>`);
   }
 
   const totals = () => (D.board || []).map((t) => ({ ...t, total: t.manual + t.hunt + t.quiz }));
@@ -277,15 +304,15 @@
   }
 
   function vHunt() {
-    const H = D.hunt || { length: 0, cards: 0, teams: [] };
+    const H = D.hunt || { length: 0, teams: [] };
     const pat = String(H.pattern || '').split(',').map(Number).filter(Boolean); const groups = pat.length ? pat : [H.length];
     const winner = H.winner ? D.teams.find((t) => t.id === H.winner) : null;
     const blanks = groups.map((len) => `<div class="tiles">${Array.from({ length: len }, () => '<span></span>').join('')}</div>`).join('');
-    return `<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Message in a bottle · ${H.length} letters · 6 badges per team</div><h1 class="ttl">${winner ? esc(winner.name) + ' cracked it first!' : 'Crack the message in the bottle'}</h1></div></div>
+    return `<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Message in a bottle · ${H.length} letters</div><h1 class="ttl">${winner ? esc(winner.name) + ' cracked it first!' : 'Crack the message in the bottle'}</h1></div></div>
       <div style="display:flex;flex-wrap:wrap;gap:.6em 1.4em">${blanks}</div>
-      <div class="hunt">${D.teams.map((t) => { const h = (H.teams || []).find((x) => x.team_id === t.id) || { found: 0, cards: 0, letters: 0, guesses: 0 }; const solved = (H.solved_teams || []).includes(t.id);
-        return `<div class="${teamClass(t.id)}"><div class="hunt-head"><b><span class="team-dot"></span>${esc(t.name)}</b><span class="muted">${h.found} of ${h.cards} cards · ${h.letters} of ${H.length} letters · ${h.guesses} of 5 guesses used${solved ? ' · solved' : ''}</span></div>
-        <div class="tiles">${Array.from({ length: h.letters }, () => '<span class="on">•</span>').join('')}</div></div>`; }).join('')}</div>`;
+      <div class="hunt">${D.teams.map((t) => { const h = (H.teams || []).find((x) => x.team_id === t.id) || { cards: 0, opened: 0, placed: 0, guesses: 0 }; const solved = (H.solved_teams || []).includes(t.id);
+        return `<div class="${teamClass(t.id)}"><div class="hunt-head"><b><span class="team-dot"></span>${esc(t.name)}</b><span class="muted">${h.opened} of ${h.cards} letters opened · ${h.placed} of ${H.length} boxes filled · ${h.guesses} of 5 guesses${solved ? ' · solved' : ''}</span></div>
+        <div class="tiles">${Array.from({ length: H.length }, (_, i) => `<span class="${i < h.placed ? 'on' : ''}">${i < h.placed ? '•' : ''}</span>`).join('')}</div></div>`; }).join('')}</div>`;
   }
 
   function paint() {
@@ -313,7 +340,7 @@
     moving = true;
     try {
       const steps = WR.flow.build(D.acts); const i = WR.flow.indexOf(steps, D.st); const j = i + dir;
-      if (j >= 0 && j < steps.length) { await rpc('host_set_state', { p_pin: pin, p_patch: dir > 0 ? WR.flow.patch(steps[j]) : WR.flow.patchBack(steps[j]) }); await refresh(); }
+      if (j >= 0 && j < steps.length) { await rpc('host_set_state', { p_pin: pin, p_patch: dir > 0 ? WR.flow.patch(steps[j], D.st) : WR.flow.patchBack(steps[j], D.st) }); await refresh(); }
     } catch (e) { hint.textContent = /passphrase/i.test(e.message) ? 'Sign in on /host first' : e.message; }
     moving = false;
   }
@@ -324,7 +351,7 @@
 
   syncClock();
   setInterval(tick, 250);
-  setTimeout(() => live(['state', 'responses', 'participants', 'activities', 'teams', 'team_points', 'notes', 'note_votes', 'team_entries'], refresh, 4000), 300);
+  setTimeout(() => live(['state', 'responses', 'participants', 'activities', 'teams', 'team_points', 'notes', 'note_votes', 'team_entries', 'race_board', 'hunt_guesses'], refresh, 4000), 300);
   document.addEventListener('dblclick', () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) {} });
 })();
 </script>

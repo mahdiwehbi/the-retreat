@@ -23,65 +23,22 @@
 <script src="/lib.js"></script>
 <script>
 (function () {
-  const { $, esc, teamClass, rpc, rows, toast } = WR;
+  const { $, esc, rpc, rows } = WR;
   const app = $('#app');
   if (!WR.configured) { WR.setupNotice(app); return; }
   const code = (new URLSearchParams(location.search).get('c') || '').trim().toUpperCase();
-  let me = null, spot = null, clues = [], mine = [];
-
   async function start() {
-    if (!code) return manual();
-    try { me = await WR.checkMe(); } catch (e) { me = WR.getMe(); }
-    if (!me) return WR.renderJoin(app, (m) => { me = m; load(); });
-    load();
+    if (await WR.closedGuard(app)) return;
+    if (!code) { app.innerHTML = '<section class="card"><p class="muted" style="margin:0">Scan a helper card to see what it is.</p></section>'; return; }
+    const [spot] = await rows('hunt_spots', (q) => q.eq('code', code));
+    if (!spot) { app.innerHTML = `<section class="card"><h1 style="font-size:24px">Card not found</h1><p class="muted" style="margin:0">${esc(code)} is not a helper card.</p></section>`; return; }
+    let info = null, err = '';
+    try { info = await rpc('spot_info', { p_code: code }); } catch (e) { err = e.message; }
+    app.innerHTML = `<header class="spread"><span class="eyebrow">Helper card ${esc(spot.code)} · ${esc(spot.grp)}</span></header>
+      <section class="card"><h1 style="font-size:22px;margin:0">${esc(spot.title)}</h1><p class="desc" style="margin:0">${esc(spot.description)}</p></section>
+      ${info ? `<section class="card" style="border-color:var(--accent)"><div class="eyebrow">In WAP, this is</div><div class="big-msg" style="font-size:30px">${esc(info.name)}</div><p style="margin:0">${esc(info.explain)}</p></section>` : `<p class="notice">${esc(err)}</p>`}
+      <nav class="foot-links"><a href="/sap">Back to the site test</a><a href="/">Back to the game</a></nav>`;
   }
-  function manual() {
-    app.innerHTML = `<section class="card"><div class="eyebrow">Treasure hunt</div><h1 style="font-size:26px">Type the code on the card</h1>
-      <form id="mf" class="stack"><input id="mcode" maxlength="10" autocapitalize="characters" autocomplete="off" aria-label="Card code" placeholder="e.g. A5 or R03"><button class="btn primary block">Open</button></form></section>`;
-    $('#mf').addEventListener('submit', async (e) => {
-      e.preventDefault(); const v = $('#mcode').value.trim().toUpperCase(); if (!v) return;
-      const s = await rows('hunt_spots', (q) => q.eq('code', v));
-      location.href = (s.length ? '/spot?c=' : '/card?c=') + encodeURIComponent(v);
-    });
-  }
-
-  async function load() {
-    [spot] = await rows('hunt_spots', (q) => q.eq('code', code));
-    if (spot) { const [s] = await rows('state'); if (!WR.isLive(s, 'lake')) { app.innerHTML = `<section class="card" style="text-align:center"><div class="eyebrow">WAP deck</div><div class="big-msg">Patience…</div><p style="margin:0">The WAP deck opens at the lake.</p><a class="btn primary block" href="/">Open the game</a></section>`; return; } }
-    if (!spot) { location.replace('/card?c=' + encodeURIComponent(code)); return; }
-    clues = (await rows('hunt_cards', (q) => q.eq('kind', 'find').order('position'))) || [];
-    try { mine = await rpc('hunt_my_team', { p_pid: me.id, p_token: me.token }); } catch (e) { if (/join again/i.test(e.message)) { WR.setMe(null); location.reload(); return; } }
-    render();
-  }
-
-  function render(msg) {
-    const by = new Map(mine.map((x) => [x.id, x]));
-    const open = clues.filter((c) => { const m = by.get(c.id) || {}; return !m.solved && (m.wrong || 0) < 3; });
-    app.innerHTML = `
-      <header class="spread"><span class="eyebrow">${esc(spot.grp)} · card ${esc(spot.code)}</span><span class="chip ${teamClass(me.team_id)}"><span class="team-dot"></span>Your team</span></header>
-      <section class="card"><h1 style="font-size:24px">${esc(spot.title)}</h1><p class="desc" style="margin:0">${esc(spot.description)}</p></section>
-      ${msg || ''}
-      <section class="card"><strong>Does this card answer one of your clues?</strong>
-        ${open.length ? `<div class="pick">${open.map((c) => { const m = by.get(c.id) || {}; return `<button data-clue="${esc(c.code)}">${esc(c.prompt.replace(/^WAP explorer: /, ''))}<small>${3 - (m.wrong || 0)} ${3 - (m.wrong || 0) === 1 ? 'try' : 'tries'} left · ${c.points} pts</small></button>`; }).join('')}</div>`
-          : '<p class="muted" style="margin:0">Your team has no open clues left. Well done!</p>'}
-        <p class="muted small" style="margin:0">Not sure? Leave it and look for other cards. A wrong answer uses a try.</p></section>
-      <nav class="foot-links"><a href="/hunt">All clues</a><a href="/">Back to the game</a></nav>`;
-  }
-
-  app.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-clue]'); if (!b || b.disabled) return;
-    app.querySelectorAll('[data-clue]').forEach((x) => (x.disabled = true));
-    try {
-      const res = await rpc('hunt_submit', { p_pid: me.id, p_token: me.token, p_code: b.dataset.clue, p_answer: spot.code, p_photo: null });
-      mine = await rpc('hunt_my_team', { p_pid: me.id, p_token: me.token });
-      const why = res.explain ? `<p style="margin:0"><strong>${esc(spot.code)} is: ${esc(res.name)}.</strong> ${esc(res.explain)}</p>` : '';
-      if (res.status === 'correct') render(`<section class="card"><div class="big-msg" style="text-align:center">Right! +${res.points}</div>${why}</section>`);
-      else if (res.status === 'already') render('<p class="notice">Your team already solved that clue.</p>');
-      else if (res.status === 'locked') render('<p class="notice bad">That clue is locked: 3 tries used.</p>');
-      else render(`<section class="card"><p class="notice bad" style="margin:0"><strong>Not this card.</strong> ${res.left > 0 ? `${res.left} ${res.left === 1 ? 'try' : 'tries'} left on that clue.` : 'That clue is now locked.'}</p>${why}</section>`);
-    } catch (ex) { toast(ex.message, 4000); render(); }
-  });
-
   start();
 })();
 </script>

@@ -60,6 +60,7 @@
   async function refresh() {
     const [s, t] = await Promise.all([rows('state'), rows('teams', (q) => q.order('id'))]);
     st = s[0] || null; teams = t;
+    if (WR.isLive(st, 'closed')) { WR.thanks(app); return; }
     const p = await rows('participants', (q) => q.eq('id', me.id));
     if (!p.length) { WR.setMe(null); me = null; return WR.renderJoin(app, (m) => { me = m; refresh(); }); }
     me.team_id = p[0].team_id; me.name = p[0].name; WR.setMe(me);
@@ -83,10 +84,10 @@
 
   function header() {
     const t = teamOf(me.team_id);
-    return `<header class="spread"><div class="stack" style="gap:2px"><img src="/logo.png" alt="WaSH Sector Lebanon" style="height:30px;width:auto;align-self:flex-start"><span class="eyebrow">${esc(WR.cfg.eventName)}</span><strong style="font-size:18px">${esc(me.name)}</strong></div>
+    return `<header class="spread"><div class="stack" style="gap:2px"><span class="eyebrow">${esc(WR.cfg.eventName)}</span><strong style="font-size:18px">${esc(me.name)}</strong></div>
       <span class="chip ${teamClass(t.id)}"><span class="team-dot"></span>${esc(t.name)}</span></header>`;
   }
-  const footer = () => `<nav class="foot-links" aria-label="More">${['badges', 'rooms', 'lake'].some((g) => WR.isLive(st, g)) ? '<a href="/hunt">Treasure hunt</a>' : ''}${WR.isLive(st, 'sap') ? '<a href="/sap">Site test</a>' : ''}<a href="#" data-act="rejoin">Not ${esc(me.name)}? Join again</a></nav>`;
+  const footer = () => `<nav class="foot-links" aria-label="More">${['badges', 'rooms', 'race'].some((g) => WR.isLive(st, g)) ? '<a href="/hunt">Treasure hunt</a>' : ''}${WR.isLive(st, 'sap') || WR.isLive(st, 'practice') ? '<a href="/sap">Site test</a>' : ''}${WR.isLive(st, 'feedback') ? '<a href="/feedback">Feedback</a>' : ''}<a href="#" data-act="rejoin">Not ${esc(me.name)}? Join again</a></nav>`;
   const waitingCard = (title, text) => `<section class="card" style="text-align:center;padding:32px 18px"><div class="big-msg">${title}</div><p class="muted" style="margin:0">${text}</p></section>`;
 
   function quizLeft() {
@@ -152,8 +153,14 @@
       ${mine ? '<p class="muted small" style="margin:0">Sent. You can change it and send again.</p>' : ''}</section>`;
   }
 
+  function welcome() {
+    const t = teamOf(me.team_id);
+    return `<section class="card ${teamClass(t.id)}" style="text-align:center"><div class="big-msg">Welcome, ${esc(String(me.name).split(' ')[0])}!</div><p style="margin:0">You are checked in with <strong>${esc(t.name)}</strong>.</p><p class="muted small" style="margin:0">Keep this page open: it follows the session.</p></section>`;
+  }
   function body() {
+    if (!st || st.screen === 'lobby') return welcome();
     if (st && st.screen === 'session' && window.WR_SESSIONS) {
+      if (st.session_key === 'd1-open') { const s0 = WR_SESSIONS.get('d1-open'); return welcome() + `<section class="card"><div class="eyebrow">${esc(s0.label)} · ${esc(s0.time)}</div><h1 style="font-size:24px;margin:0">${esc(s0.title)}</h1><ol style="margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px">${s0.show.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></section>`; }
       const s = WR_SESSIONS.get(st.session_key);
       if (s) return `<section class="card"><div class="eyebrow">Day ${s.day} · ${esc(s.label)} · ${esc(s.time)}</div><h1 style="font-size:26px;margin-bottom:0">${esc(s.title)}</h1>${s.sub ? `<p class="muted" style="margin:0;font-weight:600">${esc(s.sub)}</p>` : ''}<ol style="margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px">${s.show.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></section>`;
     }

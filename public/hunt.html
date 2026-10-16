@@ -9,15 +9,17 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Mono:wght@600&family=IBM+Plex+Sans:wght@400;600&display=swap">
 <link rel="stylesheet" href="/style.css">
 <style>
-  .tiles{display:flex;flex-wrap:wrap;gap:6px}
-  .tiles span{width:34px;height:42px;display:grid;place-items:center;border:2px solid var(--line);border-radius:8px;font-family:var(--display);font-weight:800;font-size:22px}
-  .tiles span.on{background:var(--tc);border-color:var(--tc);color:var(--on-team)}
-  .clue{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);text-decoration:none;color:var(--ink)}
-  .clue .st{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--soft);color:var(--muted);font-family:var(--display)}
-  .clue.done{opacity:.65}
-  .clue.done .st{background:var(--good);color:var(--surface)}
-  .clue.gold{border-color:var(--gold)}
-  .clue p{margin:0}
+  .word{display:flex;flex-wrap:wrap;gap:6px 14px}
+  .word .grp{display:flex;gap:5px}
+  .slot{width:36px;height:46px;display:grid;place-items:center;border:2px dashed var(--line);border-radius:8px;font-family:var(--display);font-weight:800;font-size:22px;background:var(--surface);color:var(--ink);padding:0;cursor:pointer}
+  .slot.full{border-style:solid;border-color:var(--tc);background:var(--tc);color:var(--on-team)}
+  .slot.lock{box-shadow:inset 0 0 0 3px #FFE07A}
+  .slot.target{border-color:var(--accent);border-style:solid}
+  .tray{display:flex;flex-wrap:wrap;gap:8px}
+  .tile{width:48px;height:58px;display:grid;place-items:center;border-radius:10px;font-family:var(--display);font-weight:800;font-size:28px;border:2px solid var(--tc);background:var(--surface);color:var(--ink);cursor:grab;padding:0}
+  .tile[aria-pressed="true"]{background:var(--tc);color:var(--on-team)}
+  .tile.used{opacity:.35}
+  .q{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);text-decoration:none;color:var(--ink)}
   .how{font-size:13px;color:var(--muted)}
 </style>
 </head>
@@ -29,76 +31,86 @@
 <script src="/lib.js"></script>
 <script>
 (function () {
-  const { $, esc, teamClass, rpc, rows, live } = WR;
+  const { $, esc, teamClass, rpc, rows, live, toast } = WR;
   const app = $('#app');
   if (!WR.configured) { WR.setupNotice(app); return; }
-  let me = null, cards = [], mine = [], teams = [], secretLen = 0, board = {}, solvedWord = null;
+  let me = null, st = null, teams = [], board = {}, myLetters = [], slots = [], myQs = [], solvedWord = null, pick = null, busy = false;
 
   async function start() {
     try { me = await WR.checkMe(); } catch (e) { me = WR.getMe(); }
     if (!me) return WR.renderJoin(app, (m) => { me = m; go(); });
     go();
   }
-  let raceLive = false, roomsLive = false, lakeLive = false;
-  function go() { live(['hunt_cards', 'teams', 'team_points', 'state'], refresh, 5000); }
+  function go() { live(['state', 'teams', 'race_board', 'hunt_guesses', 'hunt_finds'], refresh, 4000); }
 
   async function refresh() {
-    const [c, t, b] = await Promise.all([rows('hunt_cards', (q) => q.order('position').order('code')), rows('teams', (q) => q.order('id')), rpc('hunt_board')]);
-    cards = c; teams = t; secretLen = b.length || 0; board = b;
-    try { const [s] = await rows('state'); raceLive = WR.isLive(s, 'badges'); roomsLive = WR.isLive(s, 'rooms'); lakeLive = WR.isLive(s, 'lake'); } catch (e) {}
-    try { solvedWord = await rpc('hunt_reveal', { p_pid: me.id, p_token: me.token }); } catch (e) {}
-    try { mine = await rpc('hunt_my_team', { p_pid: me.id, p_token: me.token }); } catch (e) { if (/join again/i.test(e.message)) { WR.setMe(null); location.reload(); } }
-    render();
+    const [s, t] = await Promise.all([rows('state'), rows('teams', (q) => q.order('id'))]);
+    st = s[0] || {}; teams = t;
+    if (WR.isLive(st, 'closed')) { WR.thanks(app); return; }
+    try {
+      const [b, L, sl, qs] = await Promise.all([rpc('hunt_board'), rpc('race_my_letters', { p_pid: me.id, p_token: me.token }), rows('race_board', (q) => q.eq('team_id', me.team_id)),
+        rows('hunt_cards', (q) => q.not('letter_index', 'is', null).eq('team_id', me.team_id).eq('holder', me.name))]);
+      board = b; myLetters = L; slots = sl; myQs = qs;
+      try { solvedWord = await rpc('hunt_reveal', { p_pid: me.id, p_token: me.token }); } catch (e) {}
+    } catch (e) { if (/join again/i.test(e.message)) { WR.setMe(null); location.reload(); return; } toast(e.message, 4000); }
+    if (!busy) render();
   }
 
   function render() {
-    const byId = new Map(mine.map((x) => [x.id, x]));
-    const letters = new Map(); cards.forEach((c) => { const m = byId.get(c.id); if (m && m.letter && c.letter_index != null) letters.set(c.letter_index, m.letter); if (m && m.letter2 && c.letter_index2 != null) letters.set(c.letter_index2, m.letter2); });
-    
     const team = teams.find((t) => t.id === me.team_id) || { name: 'Your team' };
-    const how = { find: 'Find the matching card around the lake and scan its QR code.', text: 'Tap to answer.', quiz: 'Tap to answer.', photo: 'Tap to send a photo.' };
+    const raceOn = WR.isLive(st, 'race');
+    const len = board.length || 0; const pat = String(board.pattern || '').split(',').map(Number).filter(Boolean); const groups = pat.length ? pat : [len];
+    const bySlot = new Map(slots.map((x) => [x.slot, x]));
+    const onBoard = new Set(slots.map((x) => x.code));
+    const helpUsed = myLetters.some((x) => x.helped);
+    const won = board.winner; const mineSolved = (board.solved_teams || []).includes(me.team_id);
+    const myRow = (board.teams || []).find((x) => x.team_id === me.team_id) || {}; const left = 5 - (myRow.guesses || 0);
+    let pos = 0;
+    const word = groups.map((g) => { const cells = Array.from({ length: g }, (_, k) => { const i = pos + k; const x = bySlot.get(i); const l = solvedWord ? solvedWord[i] : x && x.letter;
+      return `<button class="slot ${l ? 'full' : ''} ${x && x.locked ? 'lock' : ''} ${pick && !l ? 'target' : ''}" data-slot="${i}" aria-label="Box ${i + 1}${l ? ': ' + l : ''}">${l ? esc(l) : ''}</button>`; }).join(''); pos += g; return `<div class="grp">${cells}</div>`; }).join('');
+    const qsHtml = myQs.length ? `<section class="card"><strong>Your questions</strong><div class="stack" style="gap:8px">${myQs.map((c) => { const l = myLetters.find((x) => x.code === c.code);
+      return `<a class="q" href="/card?c=${encodeURIComponent(c.code)}"><span>${/^H/.test(c.code) ? 'Room card question' : /^B/.test(c.code) ? 'Badge question 2' : 'Badge question'}</span><b>${l ? esc(l.letter) : 'Answer →'}</b></a>`; }).join('')}</div>
+      <p class="how" style="margin:0">Each question opens 1 letter. 3 tries: 3 points on the first, then 2, then 1, then 0.</p></section>` : '';
     app.innerHTML = `
-      <header class="spread"><span class="eyebrow">Treasure hunt</span><span class="chip ${teamClass(me.team_id)}"><span class="team-dot"></span>${esc(team.name)}</span></header>
-      ${(() => {
-        if (!raceLive) return '';
-        const pat = String(board.pattern || '').split(',').map(Number).filter(Boolean);
-        const groups = pat.length ? pat : [secretLen]; let pos = 0;
-        const tiles = groups.map((len) => { const g = Array.from({ length: len }, (_, k) => { const i = pos + k; const l = solvedWord ? solvedWord[i] : letters.get(i); return `<span class="${l ? 'on' : ''}">${l ? esc(l) : ''}</span>`; }).join(''); pos += len; return `<div class="tiles">${g}</div>`; }).join('');
-        const won = board.winner; const mineSolved = (board.solved_teams || []).includes(me.team_id);
-        const myRow = (board.teams || []).find((x) => x.team_id === me.team_id) || {}; const left = 5 - (myRow.guesses || 0);
-        return `<section class="card ${teamClass(me.team_id)}"><h1 style="font-size:26px">The message in the bottle</h1>
-          <div class="stack" style="gap:8px;flex-direction:row;flex-wrap:wrap;column-gap:18px">${tiles}</div>
-          <p class="muted small" style="margin:0">Your team has ${letters.size} of ${secretLen} letters. Each person on your team holds a card with 2 letters: get everyone's card right, or guess early.</p>
-          ${won ? `<p class="notice ${won === me.team_id ? 'good' : ''}"><strong>${esc((teams.find((t) => t.id === won) || {}).name || '')}</strong> cracked it first!</p>` : ''}
-          ${mineSolved ? '<p class="notice good">Your team solved it.</p>' : left > 0 ? `<form id="gf" class="row"><input id="guess" maxlength="60" autocomplete="off" aria-label="Your team's guess" placeholder="Guess the word" style="flex:1 1 180px"><button class="btn primary">Guess</button></form><span class="how">${left} ${left === 1 ? 'guess' : 'guesses'} left for your team. First right guess: +10 points.</span>` : '<p class="notice">Your team used its 5 guesses.</p>'}
-        </section>`;
-      })()}
-      ${(() => {
-        const rooms = cards.filter((c) => /^R\d/.test(c.code) && (c.team_id == null || c.team_id === me.team_id)); const lake = cards.filter((c) => !/^[RH]\d/.test(c.code)); const beds = cards.filter((c) => /^H\d/.test(c.code) && c.team_id === me.team_id);
-        const roomsHtml = rooms.length && raceLive ? `<section class="card"><strong>Day 1 · Your team's cards</strong><p class="small" style="margin:0">Everyone has a card with their name on it. Scan it and answer: its 2 letters go to your team. You can retry until you get it right.</p>
-          <div class="tiles">${rooms.map((c) => { const m = byId.get(c.id) || {}; return `<span class="${m.solved ? 'on' : ''}" title="${esc(c.code)}" style="${!m.solved && m.wrong >= 3 ? 'opacity:.4' : ''}">${m.solved ? esc((m.letter || '') + (m.letter2 || '') || '✓') : esc(c.holder || '·')}</span>`; }).join('')}</div>
-          <span class="how">${rooms.filter((c) => (byId.get(c.id) || {}).solved).length} of ${rooms.length} cards done</span></section>` : '';
-        const lakeHtml = lake.length && lakeLive ? `<section class="card"><strong>Day 2 · The Expedition (WAP deck)</strong><p class="small" style="margin:0">Your team leader holds the WAP deck: cards that describe latrines, water sources and wastewater disposal without naming them. For each clue, pick the right card and scan it. A wrong scan uses one of your 3 tries. Field tasks need a photo.</p></section>
-          <div class="stack">${lake.map((c, i) => { const m = byId.get(c.id) || {}; const done = m.solved; const locked = !done && m.wrong >= 3;
-            const inner = `<span class="st">${done ? '✓' : i + 1}</span><span class="stack" style="gap:4px"><p><strong>${esc(c.prompt)}</strong></p><span class="how">${done ? 'Solved' : locked ? 'Locked: 3 tries used' : how[c.kind] || ''}${!done && !locked && m.wrong ? ` · ${3 - m.wrong} ${3 - m.wrong === 1 ? 'try' : 'tries'} left` : ''} · ${c.points} pt${c.points === 1 ? '' : 's'}</span></span>`;
-            return c.kind === 'find' || done || locked ? `<div class="clue ${done ? 'done' : ''} ${c.golden ? 'gold' : ''}">${inner}</div>` : `<a class="clue ${c.golden ? 'gold' : ''}" href="/card?c=${encodeURIComponent(c.code)}">${inner}</a>`; }).join('')}</div>` : '';
-        const bedsHtml = beds.length && roomsLive ? `<section class="card"><strong>Safe Harbour · room bonus cards</strong><p class="small" style="margin:0">Each room has a welcome card with a bonus question: 2 points for your team.</p>
-          <div class="stack">${beds.map((c) => { const m = byId.get(c.id) || {}; const done = m.solved; const locked = !done && m.wrong >= 3;
-            const inner = `<span class="st">${done ? '✓' : '·'}</span><span class="stack" style="gap:4px"><p><strong>${esc(c.holder)}'s room</strong></p><span class="how">${done ? 'Solved' : locked ? 'Locked: 3 tries used' : 'Scan the card on the bed'}</span></span>`;
-            return `<div class="clue ${done ? 'done' : ''}">${inner}</div>`; }).join('')}</div></section>` : '';
-        return roomsHtml + bedsHtml + lakeHtml;
-      })()}
-      <nav class="foot-links"><a href="/">Back to the game</a><a href="/spot">Type a card code</a></nav>`;
+      <header class="spread"><span class="eyebrow">Message in a bottle</span><span class="chip ${teamClass(me.team_id)}"><span class="team-dot"></span>${esc(team.name)}</span></header>
+      ${qsHtml}
+      <section class="card ${teamClass(me.team_id)}"><strong>Your letters</strong>
+        <div class="tray">${myLetters.length ? myLetters.map((x) => `<button class="tile ${onBoard.has(x.code) ? 'used' : ''}" data-tile="${esc(x.code)}" draggable="${raceOn}" aria-pressed="${pick === x.code}">${esc(x.letter)}</button>`).join('') : '<span class="muted">Answer your questions to open your letters.</span>'}</div>
+        ${raceOn && myLetters.length && !helpUsed && !mineSolved ? `<button class="btn small" data-help>Help: put one of my letters in its right place (−1 point, once)</button>` : helpUsed ? '<span class="how">You used your help.</span>' : ''}
+      </section>
+      ${raceOn ? `<section class="card ${teamClass(me.team_id)}"><h1 style="font-size:22px">The secret message</h1>
+        <div class="word">${word}</div>
+        <p class="how" style="margin:0">Tap one of your letters, then a box (or drag it). Tap a filled box to empty it. Your whole team sees the boxes.</p>
+        ${won ? `<p class="notice ${won === me.team_id ? 'good' : ''}"><strong>${esc((teams.find((t) => t.id === won) || {}).name || '')}</strong> cracked it first!</p>` : ''}
+        ${mineSolved ? '<p class="notice good">Your team cracked it.</p>' : left > 0 ? `<div class="row"><button class="btn primary" data-submit ${slots.length < len ? 'disabled' : ''}>Submit the message for ${esc(team.name)}</button><span class="how">${left} of 5 tries left${slots.length < len ? ` · fill all ${len} boxes first` : ''}</span></div>` : '<p class="notice">Your team used its 5 tries.</p>'}
+      </section>` : '<section class="card"><p class="muted" style="margin:0">The word race starts after lunch. Then you will put your letters together with your team here.</p></section>'}
+      <nav class="foot-links"><a href="/">Back to the game</a></nav>`;
   }
-  app.addEventListener('submit', async (e) => {
-    if (e.target.id !== 'gf') return; e.preventDefault();
-    const g = $('#guess').value.trim(); if (!g) return;
-    try {
-      const r = await rpc('hunt_guess', { p_pid: me.id, p_token: me.token, p_guess: g });
-      WR.toast(r.status === 'correct' ? (r.first ? 'You cracked it first! +10 points' : 'Right! +5 points') : r.status === 'out' ? 'No guesses left' : 'Not the phrase. ' + r.left + ' left', 4000);
+
+  async function act(fn, args) { busy = true; try { await rpc(fn, Object.assign({ p_pid: me.id, p_token: me.token }, args)); } catch (e) { toast(e.message, 4000); } busy = false; pick = null; await refresh(); }
+  app.addEventListener('click', async (e) => {
+    const t = e.target.closest('[data-tile]'); if (t) { pick = pick === t.dataset.tile ? null : t.dataset.tile; render(); return; }
+    const sl = e.target.closest('[data-slot]');
+    if (sl) { const i = Number(sl.dataset.slot); const x = slots.find((y) => y.slot === i);
+      if (pick) return act('race_place', { p_code: pick, p_slot: i });
+      if (x && !x.locked) return act('race_clear', { p_slot: i });
+      return; }
+    if (e.target.closest('[data-help]')) {
+      const free = myLetters.find((x) => !slots.some((y) => y.code === x.code && y.locked));
+      if (!free) return;
+      if (!confirm('Use your one help? It costs your team 1 point and puts your letter ' + free.letter + ' in its right place.')) return;
+      return act('race_help_me', { p_code: free.code });
+    }
+    if (e.target.closest('[data-submit]')) {
+      const len = board.length || 0; const g = Array.from({ length: len }, (_, i) => (slots.find((y) => y.slot === i) || {}).letter || '').join('');
+      try { const r = await rpc('hunt_guess', { p_pid: me.id, p_token: me.token, p_guess: g });
+        toast(r.status === 'correct' ? (r.first ? 'You cracked it first! +10 points' : 'Right! +5 points') : r.status === 'out' ? 'No tries left' : 'Not the message. ' + r.left + ' tries left', 4000); } catch (ex) { toast(ex.message, 4000); }
       refresh();
-    } catch (ex) { WR.toast(ex.message, 4000); }
+    }
   });
+  app.addEventListener('dragstart', (e) => { const t = e.target.closest('[data-tile]'); if (t) { pick = t.dataset.tile; e.dataTransfer.setData('text/plain', pick); } });
+  app.addEventListener('dragover', (e) => { if (e.target.closest('[data-slot]')) e.preventDefault(); });
+  app.addEventListener('drop', (e) => { const sl = e.target.closest('[data-slot]'); if (!sl) return; e.preventDefault(); const c = e.dataTransfer.getData('text/plain') || pick; if (c) act('race_place', { p_code: c, p_slot: Number(sl.dataset.slot) }); });
   start();
 })();
 </script>

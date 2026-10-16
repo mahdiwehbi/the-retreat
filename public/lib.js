@@ -150,10 +150,15 @@
 
   // The presentation: one ordered list of steps, like slides. Arrow keys move along it.
   // Join screen → each question (a quiz adds "reveal" and "top players") → team scores → podium.
+  const shuffle = (arr) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const flow = {
     build(acts) {
       const s = [{ k: 'lobby' }];
-      const addQ = (a) => { s.push({ k: 'q', a }); if (a.kind === 'quiz') { s.push({ k: 'reveal', a }); s.push({ k: 'lb', a }); } };
+      const addQ = (a) => {
+        s.push({ k: 'q', a });
+        if (a.kind === 'quiz') { s.push({ k: 'reveal', a }); s.push({ k: 'lb', a }); }
+        if (a.kind === 'team') { s.push({ k: 'wheel', a }); [0, 1, 2].forEach((i) => s.push({ k: 'tp', a, i })); }
+      };
       const S = window.WR_SESSIONS || [];
       const used = new Set(); const open = [];
       S.forEach((ses) => {
@@ -163,19 +168,23 @@
         s.push({ k: 'session', s: ses, live: lv });
         if (ses.screen === 'hunt') s.push({ k: 'hunt', s: ses, live: lv });
         acts.filter((a) => a.position >= ses.from && a.position <= ses.to).forEach((a) => { used.add(a.id); addQ(a); });
+        if (ses.key === 'd1-close') { s.push({ k: 'teams' }); [1, 2, 3].forEach((n) => s.push({ k: 'podium', n })); }
       });
       acts.filter((a) => !used.has(a.id)).forEach(addQ);
-      s.push({ k: 'teams' });
-      [1, 2, 3].forEach((n) => s.push({ k: 'podium', n }));
+      s.push({ k: 'end' });
       return s;
     },
     indexOf(steps, st) {
       if (!st) return 0;
+      const pr = st.present || null;
       const i = steps.findIndex((x) => {
         if (x.k === 'lobby') return st.screen === 'lobby';
+        if (x.k === 'end') return st.screen === 'session' && st.session_key === 'end';
         if (x.k === 'session') return st.screen === 'session' && st.session_key === x.s.key;
         if (x.k === 'hunt') return st.screen === 'hunt' && st.session_key === x.s.key;
-        if (x.k === 'q') return st.screen === 'activity' && st.activity_id === x.a.id && st.phase !== 'reveal';
+        if (x.k === 'q') return st.screen === 'activity' && st.activity_id === x.a.id && st.phase !== 'reveal' && !(pr && pr.act === x.a.id);
+        if (x.k === 'wheel') return st.screen === 'activity' && pr && pr.act === x.a.id && pr.i === -1;
+        if (x.k === 'tp') return st.screen === 'activity' && pr && pr.act === x.a.id && pr.i === x.i;
         if (x.k === 'reveal') return st.screen === 'activity' && st.activity_id === x.a.id && st.phase === 'reveal';
         if (x.k === 'lb') return st.screen === 'leaderboard' && st.activity_id === x.a.id;
         if (x.k === 'teams') return st.screen === 'teams';
@@ -189,11 +198,16 @@
       }
       return 0;
     },
-    patch(x) {
+    // st = the current state, so the presenting order chosen by the wheel stays the same.
+    patch(x, st) {
+      const pr = st && st.present;
       if (x.k === 'lobby') return { screen: 'lobby', live: ['register'] };
+      if (x.k === 'end') return { screen: 'session', session: 'end', live: ['closed'] };
       if (x.k === 'session') return { screen: 'session', session: x.s.key, live: x.live };
       if (x.k === 'hunt') return { screen: 'hunt', session: x.s.key, live: x.live };
-      if (x.k === 'q') return { activity_id: x.a.id, screen: 'activity', phase: 'open' };
+      if (x.k === 'q') return { activity_id: x.a.id, screen: 'activity', phase: 'open', present: null };
+      if (x.k === 'wheel') return { activity_id: x.a.id, screen: 'activity', phase: 'closed', present: { act: x.a.id, order: shuffle([1, 2, 3]), i: -1, at: Date.now() } };
+      if (x.k === 'tp') return { activity_id: x.a.id, screen: 'activity', phase: 'closed', present: { act: x.a.id, order: pr && pr.act === x.a.id ? pr.order : shuffle([1, 2, 3]), i: x.i } };
       if (x.k === 'reveal') return { activity_id: x.a.id, screen: 'activity', phase: 'reveal' };
       if (x.k === 'lb') return { screen: 'leaderboard' };
       if (x.k === 'teams') return { screen: 'teams' };
@@ -202,9 +216,12 @@
     label(x) {
       if (!x) return 'End';
       if (x.k === 'lobby') return 'Join screen';
+      if (x.k === 'end') return 'Close the retreat (all QR codes say thank you)';
       if (x.k === 'session') return x.s.label + ': ' + x.s.title + (x.s.sub ? ' (' + x.s.sub + ')' : '');
-      if (x.k === 'hunt') return x.s.key === 'd1-race' ? 'Word race on the screen' : 'Hunt progress on the screen';
+      if (x.k === 'hunt') return 'Word race on the screen';
       if (x.k === 'q') return '#' + x.a.position + ' ' + x.a.title;
+      if (x.k === 'wheel') return 'Spin the wheel: who presents first';
+      if (x.k === 'tp') return 'Presentation ' + (x.i + 1) + ' of 3';
       if (x.k === 'reveal') return 'Reveal the answer';
       if (x.k === 'lb') return 'Top players';
       if (x.k === 'teams') return 'Team scores';
@@ -212,13 +229,16 @@
     }
   };
   // Going back from a reveal must not reopen the quiz: show the question closed instead.
-  flow.patchBack = (x) => (x.k === 'q' && x.a.kind === 'quiz' ? { activity_id: x.a.id, screen: 'activity', phase: 'closed' } : flow.patch(x));
+  flow.patchBack = (x, st) => (x.k === 'q' && x.a.kind === 'quiz' ? { activity_id: x.a.id, screen: 'activity', phase: 'closed', present: null } : flow.patch(x, st));
 
   function getPin() { try { return localStorage.getItem('wr-pin') || ''; } catch (e) { return ''; } }
   function setPin(v) { try { v ? localStorage.setItem('wr-pin', v) : localStorage.removeItem('wr-pin'); } catch (e) {} }
 
   // QR groups: closed until the presenter reaches the session that opens them.
-  const GROUPS = { register: 'Registration (badge check-in and join)', badges: 'Name badges (word race)', rooms: 'Room bonus cards', lake: 'Lake: WAP deck and field tasks', sap: 'Site test (tent and site cards)' };
+  const GROUPS = { register: 'Registration (join without a badge)', badges: 'Badge questions (letters)', rooms: 'Room card questions (letters)', race: 'Word race board', practice: 'Practice tent (briefing)', lake: 'Helper cards (scan to see what it is)', sap: 'Site test (site and tent forms)', feedback: 'Feedback form', closed: 'Retreat closed: every QR code says thank you' };
   const isLive = (st, g) => !!(st && Array.isArray(st.live) && st.live.includes(g));
-  window.WR = { GROUPS, isLive, flow, getPin, setPin, cfg, configured, sb, $, esc, LETTERS, teamClass, getMe, setMe, rpc, rows, live, syncClock, now, toast, uploadPhoto, checkMe, renderJoin, setupNotice, friendly };
+  // After the retreat: every page shows only a thank-you.
+  function thanks(el) { el.innerHTML = '<section class="card" style="text-align:center;margin-top:20vh"><div class="eyebrow">Where the Waters Meet</div><div class="big-msg">Thank you for joining!</div><p class="muted" style="margin:0">The WASH Sector Coordination Team Retreat is closed. See you at the next one.</p></section>'; }
+  async function closedGuard(el) { try { const [s] = await rows('state'); if (isLive(s, 'closed')) { thanks(el); return true; } } catch (e) {} return false; }
+  window.WR = { thanks, closedGuard, GROUPS, isLive, flow, getPin, setPin, cfg, configured, sb, $, esc, LETTERS, teamClass, getMe, setMe, rpc, rows, live, syncClock, now, toast, uploadPhoto, checkMe, renderJoin, setupNotice, friendly };
 })();
