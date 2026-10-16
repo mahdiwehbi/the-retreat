@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Site Check · WASH Retreat</title>
+<meta name="theme-color" content="#0A6E78">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Mono:wght@600&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .opt-list{display:grid;gap:8px}
+  .opt-list button{text-align:left;min-height:52px;padding:10px 14px;border-radius:12px;border:2px solid var(--line);background:var(--surface);font-weight:600}
+  .opt-list button[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface))}
+  .yn{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .q{display:flex;flex-direction:column;gap:8px;padding-block:6px}
+  .q-label{font-weight:600}
+  .sev{font-family:var(--display);font-weight:800;font-size:48px;line-height:1}
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="polite"><section class="card"><p class="muted">Loading…</p></section></main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/lib.js"></script>
+<script src="/form.js"></script>
+<script>
+(function () {
+  const { $, esc, teamClass, rpc, toast } = WR;
+  const F = window.WR_FORM;
+  const app = $('#app');
+  if (!WR.configured) { WR.setupNotice(app); return; }
+  let me = null;
+  const ans = {}, photos = {}, previews = {};
+  let gps = null;
+  const all = F.sections.flatMap((s) => s.questions);
+
+  async function start() {
+    try { me = await WR.checkMe(); } catch (e) { me = WR.getMe(); }
+    if (!me) return WR.renderJoin(app, (m) => { me = m; render(); });
+    render();
+  }
+
+  function riskOf(q) {
+    const v = ans[q.id];
+    if (v == null) return 0;
+    if (q.type === 'choice') return (q.options[v] || {}).risk || 0;
+    if (q.type === 'yesno') return v === 'yes' ? (q.yesRisk || 0) : (q.noRisk || 0);
+    return 0;
+  }
+  const score = () => all.reduce((s, q) => s + riskOf(q), 0);
+  const severity = (n) => F.severity.find((x) => n <= x.max) || F.severity[F.severity.length - 1];
+
+  function qHtml(q) {
+    const v = ans[q.id];
+    const label = `<span class="q-label">${esc(q.label)}${q.required ? ' *' : ''}</span>`;
+    if (q.type === 'text') return `<label class="q" for="q-${q.id}">${label}<input id="q-${q.id}" data-q="${q.id}" maxlength="120" value="${esc(v || '')}"></label>`;
+    if (q.type === 'number') return `<label class="q" for="q-${q.id}">${label}<input id="q-${q.id}" type="number" min="0" inputmode="numeric" data-q="${q.id}" value="${esc(v || '')}"></label>`;
+    if (q.type === 'textarea') return `<label class="q" for="q-${q.id}">${label}<textarea id="q-${q.id}" data-q="${q.id}" maxlength="1000">${esc(v || '')}</textarea></label>`;
+    if (q.type === 'choice') return `<div class="q" role="group" aria-label="${esc(q.label)}">${label}<div class="opt-list">${q.options.map((o, i) => `<button type="button" data-choice="${q.id}" data-i="${i}" aria-pressed="${v === i}">${esc(o.label)}</button>`).join('')}</div></div>`;
+    if (q.type === 'yesno') return `<div class="q" role="group" aria-label="${esc(q.label)}">${label}<div class="yn opt-list"><button type="button" data-yn="${q.id}" data-v="yes" aria-pressed="${v === 'yes'}">Yes</button><button type="button" data-yn="${q.id}" data-v="no" aria-pressed="${v === 'no'}">No</button></div></div>`;
+    if (q.type === 'photo') return `<div class="q">${label}<label class="btn block" for="p-${q.id}">${photos[q.id] ? 'Retake photo' : 'Take a photo'}</label><input id="p-${q.id}" type="file" accept="image/*" capture="environment" data-photo="${q.id}" hidden>${previews[q.id] ? `<img class="photo-prev" src="${previews[q.id]}" alt="${esc(q.label)}">` : ''}</div>`;
+    if (q.type === 'gps') return `<div class="q">${label}<button type="button" class="btn block" data-gps="${q.id}">${gps ? 'Location saved · update' : 'Add my location'}</button>${gps ? `<span class="small muted">${gps.lat.toFixed(5)}, ${gps.lng.toFixed(5)}</span>` : ''}</div>`;
+    return '';
+  }
+
+  function render() {
+    const s = score(), sev = severity(s);
+    app.innerHTML = `
+      <header class="spread"><span class="eyebrow">Site check · test</span><span class="chip ${teamClass(me.team_id)}"><span class="team-dot"></span>${esc(me.name)}</span></header>
+      <section class="card"><h1 style="font-size:26px">${esc(F.title)}</h1><p class="muted" style="margin:0">${esc(F.intro)}</p></section>
+      <form id="af" class="stack" novalidate>
+        ${F.sections.map((sec) => `<section class="card"><h2 style="font-size:20px">${esc(sec.title)}</h2>${sec.questions.map(qHtml).join('')}</section>`).join('')}
+        <section class="card"><div class="spread"><span class="muted">Risk score so far</span><span class="timer" style="font-size:20px">${s}</span></div>
+          <div class="spread"><span class="muted">Severity</span><strong>${sev.level} · ${esc(sev.label)}</strong></div>
+          <p id="aerr" class="notice bad" hidden></p>
+          <button class="btn primary block" type="submit">Send site check</button></section>
+      </form>
+      <nav class="foot-links"><a href="/">Back to the game</a></nav>`;
+  }
+
+  function rerenderKeep() { const y = window.scrollY; render(); window.scrollTo(0, y); }
+
+  app.addEventListener('input', (e) => { const id = e.target.dataset.q; if (id) ans[id] = e.target.value; });
+  app.addEventListener('click', (e) => {
+    const c = e.target.closest('[data-choice]');
+    if (c) { ans[c.dataset.choice] = Number(c.dataset.i); return rerenderKeep(); }
+    const y = e.target.closest('[data-yn]');
+    if (y) { ans[y.dataset.yn] = y.dataset.v; return rerenderKeep(); }
+    const g = e.target.closest('[data-gps]');
+    if (g) {
+      if (!navigator.geolocation) return toast('Location is not available on this phone.');
+      g.disabled = true; g.textContent = 'Finding you…';
+      navigator.geolocation.getCurrentPosition(
+        (p) => { gps = { lat: p.coords.latitude, lng: p.coords.longitude }; rerenderKeep(); },
+        () => { toast('Location was not allowed. You can skip it.'); rerenderKeep(); },
+        { enableHighAccuracy: true, timeout: 15000 });
+    }
+  });
+  app.addEventListener('change', (e) => {
+    const id = e.target.dataset.photo; if (!id || !e.target.files[0]) return;
+    photos[id] = e.target.files[0];
+    const r = new FileReader(); r.onload = () => { previews[id] = r.result; rerenderKeep(); }; r.readAsDataURL(photos[id]);
+  });
+  app.addEventListener('submit', async (e) => {
+    if (e.target.id !== 'af') return;
+    e.preventDefault();
+    const err = $('#aerr'); err.hidden = true;
+    const missing = all.filter((q) => q.required && !String(ans[q.id] || '').trim());
+    if (missing.length) { err.textContent = 'Please fill in: ' + missing.map((q) => q.label).join(', '); err.hidden = false; return; }
+    const btn = e.target.querySelector('button[type=submit]'); btn.disabled = true;
+    try {
+      const uploaded = [];
+      const ids = Object.keys(photos);
+      for (let i = 0; i < ids.length; i++) {
+        btn.textContent = `Uploading photo ${i + 1} of ${ids.length}…`;
+        const q = all.find((x) => x.id === ids[i]);
+        uploaded.push({ question: ids[i], label: q ? q.label : ids[i], url: await WR.uploadPhoto(photos[ids[i]], 'sites') });
+      }
+      btn.textContent = 'Sending…';
+      const readable = {};
+      all.forEach((q) => {
+        const v = ans[q.id]; if (v == null || v === '') return;
+        readable[q.id] = { label: q.label, answer: q.type === 'choice' ? q.options[v].label : q.type === 'yesno' ? (v === 'yes' ? 'Yes' : 'No') : v, risk: riskOf(q) };
+      });
+      const s = score();
+      await rpc('submit_assessment', { p_pid: me.id, p_token: me.token, p_site: ans.site || '', p_answers: readable, p_photos: uploaded, p_lat: gps ? gps.lat : null, p_lng: gps ? gps.lng : null, p_score: s });
+      const sev = severity(s);
+      app.innerHTML = `<section class="card" style="text-align:center"><div class="eyebrow">Sent</div><div class="sev">${sev.level}</div><div class="big-msg">${esc(sev.label)}</div>
+        <p class="muted" style="margin:0">Risk score ${s} for ${esc(ans.site || 'this site')}. Thank you for testing.</p>
+        <a class="btn primary block" href="/assess">Check another site</a><a class="btn block" href="/">Back to the game</a></section>`;
+      window.scrollTo(0, 0);
+    } catch (ex) {
+      if (/join again/i.test(ex.message)) { WR.setMe(null); location.reload(); return; }
+      err.textContent = ex.message; err.hidden = false; btn.disabled = false; btn.textContent = 'Send site check';
+    }
+  });
+
+  start();
+})();
+</script>
+</body>
+</html>

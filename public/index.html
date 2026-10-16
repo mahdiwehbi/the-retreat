@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>WASH Retreat</title>
+<meta name="theme-color" content="#0A6E78">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Mono:wght@600&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="wrap" id="app" aria-live="polite"><section class="card"><p class="muted">Loading…</p></section></main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/lib.js"></script>
+<script>
+(function () {
+  const { $, esc, LETTERS, teamClass, rpc, rows, live, syncClock, now, toast } = WR;
+  const app = $('#app');
+  if (!WR.configured) { WR.setupNotice(app); return; }
+
+  let me = null, teams = [], st = null, act = null, mine = null, draft = {}, sending = false, lastKey = '';
+
+  const teamOf = (id) => teams.find((t) => t.id === id) || { name: 'Team', id };
+
+  async function start() {
+    try { me = await WR.checkMe(); } catch (e) { me = WR.getMe(); }
+    if (!me) return WR.renderJoin(app, (m) => { me = m; boot(); });
+    boot();
+  }
+
+  function boot() {
+    syncClock();
+    live(['state', 'activities', 'teams', 'participants'], refresh, 6000);
+    setInterval(tick, 250);
+  }
+
+  async function refresh() {
+    const [s, t] = await Promise.all([rows('state'), rows('teams', (q) => q.order('id'))]);
+    st = s[0] || null; teams = t;
+    const p = await rows('participants', (q) => q.eq('id', me.id));
+    if (!p.length) { WR.setMe(null); me = null; return WR.renderJoin(app, (m) => { me = m; refresh(); }); }
+    me.team_id = p[0].team_id; me.name = p[0].name; WR.setMe(me);
+    act = null; mine = null;
+    if (st && st.activity_id) {
+      const [a, r] = await Promise.all([
+        rows('activities', (q) => q.eq('id', st.activity_id)),
+        rows('responses', (q) => q.eq('activity_id', st.activity_id).eq('participant_id', me.id))
+      ]);
+      act = a[0] || null; mine = r[0] || null;
+    }
+    render();
+  }
+
+  function header() {
+    const t = teamOf(me.team_id);
+    return `<header class="spread"><div class="stack" style="gap:2px"><span class="eyebrow">${esc(WR.cfg.eventName)}</span><strong style="font-size:18px">${esc(me.name)}</strong></div>
+      <span class="chip ${teamClass(t.id)}"><span class="team-dot"></span>${esc(t.name)}</span></header>`;
+  }
+  const footer = () => `<nav class="foot-links" aria-label="More"><a href="/assess">Site check</a><a href="#" data-act="rejoin">Not ${esc(me.name)}? Join again</a></nav>`;
+
+  function waitingCard(title, text) {
+    return `<section class="card" style="text-align:center;padding:32px 18px"><div class="big-msg">${title}</div><p class="muted" style="margin:0">${text}</p></section>`;
+  }
+
+  function quizLeft() {
+    if (!st || !st.opened_at || !act) return 0;
+    return Math.max(0, act.time_limit - (now() - new Date(st.opened_at).getTime()) / 1000);
+  }
+
+  function body() {
+    if (!st || !act || st.phase === 'idle') {
+      return waitingCard('Look at the screen', 'The next question will appear here. Keep this page open.') +
+        `<section class="card"><strong>Treasure hunt</strong><p class="muted small" style="margin:0">Found a card? Scan its QR code with your phone camera.</p></section>`;
+    }
+    const k = act.kind;
+    const title = `<div class="eyebrow">${({ poll: 'Vote', quiz: 'Quiz', words: 'Word cloud', rating: 'Rating', open: 'Your answer' })[k]}</div><h1 style="font-size:24px">${esc(act.title)}</h1>`;
+
+    if (st.phase === 'reveal' && k === 'quiz') {
+      const right = mine && mine.correct;
+      const opts = act.options.map((o, i) => `<div class="ans ${i === st.revealed_correct ? 'right' : 'wrong'}"><span class="k">${LETTERS[i]}</span><span>${esc(o)}</span></div>`).join('');
+      const msg = !mine ? '<div class="notice">You did not answer this one.</div>'
+        : right ? `<div class="notice good"><strong>Correct!</strong> +${mine.points} points</div>`
+        : '<div class="notice bad"><strong>Not this time.</strong> The right answer is highlighted.</div>';
+      return `<section class="card">${title}${msg}<div class="answers">${opts}</div></section>`;
+    }
+    if (st.phase !== 'open') {
+      return `<section class="card">${title}<p class="notice">${mine ? 'Your answer is in. ' : ''}Answers are closed. Look at the screen.</p></section>`;
+    }
+
+    if (k === 'quiz') {
+      if (mine) {
+        const c = mine.value.choice;
+        return `<section class="card">${title}<div class="notice good">Answer locked in: <strong>${LETTERS[c]}. ${esc(act.options[c])}</strong></div><p class="muted" style="margin:0">Wait for the reveal on the screen.</p></section>`;
+      }
+      return `<section class="card">${title}<div class="spread"><span class="muted small">Faster right answers score more</span><span class="timer" id="qtime" style="font-size:24px"></span></div>
+        <div class="answers">${act.options.map((o, i) => `<button class="ans" data-act="choice" data-i="${i}"><span class="k">${LETTERS[i]}</span><span>${esc(o)}</span></button>`).join('')}</div></section>`;
+    }
+    if (k === 'poll') {
+      const c = mine ? mine.value.choice : null;
+      return `<section class="card">${title}<div class="answers">${act.options.map((o, i) => `<button class="ans" data-act="choice" data-i="${i}" aria-pressed="${c === i}"><span class="k">${LETTERS[i]}</span><span>${esc(o)}</span></button>`).join('')}</div>
+        <p class="muted small" style="margin:0">${mine ? 'Vote sent. Tap another option to change it.' : 'Tap one option.'}</p></section>`;
+    }
+    if (k === 'rating') {
+      const c = mine ? mine.value.score : null;
+      const lo = act.options[0] || 'Low', hi = act.options[1] || 'High';
+      return `<section class="card">${title}<div class="scale">${[1, 2, 3, 4, 5].map((n) => `<button data-act="score" data-n="${n}" aria-pressed="${c === n}">${n}</button>`).join('')}</div>
+        <div class="spread small muted"><span>1 = ${esc(lo)}</span><span>5 = ${esc(hi)}</span></div>
+        <p class="muted small" style="margin:0">${mine ? 'Rating sent. Tap another number to change it.' : 'Tap a number.'}</p></section>`;
+    }
+    if (k === 'words') {
+      const n = Math.max(1, act.max_words || 1);
+      const prev = (mine && mine.value.words) || [];
+      const vals = draft.words || prev;
+      return `<section class="card">${title}<form class="stack" data-form="words">
+        ${Array.from({ length: n }, (_, i) => `<input id="w${i}" maxlength="30" autocomplete="off" aria-label="Word ${i + 1}" placeholder="${n > 1 ? 'Word ' + (i + 1) : 'Your word'}" value="${esc(vals[i] || '')}">`).join('')}
+        <button class="btn primary block" type="submit">${mine ? 'Update' : 'Send'}</button></form>
+        ${mine ? `<p class="muted small" style="margin:0">Sent: ${prev.map(esc).join(', ')}</p>` : ''}</section>`;
+    }
+    const prevText = (mine && mine.value.text) || '';
+    return `<section class="card">${title}<form class="stack" data-form="open">
+      <textarea id="otext" maxlength="280" aria-label="Your answer" placeholder="Type your answer">${esc(draft.text != null ? draft.text : prevText)}</textarea>
+      <button class="btn primary block" type="submit">${mine ? 'Update' : 'Send'}</button></form>
+      ${mine ? '<p class="muted small" style="margin:0">Sent. You can edit and send again.</p>' : ''}</section>`;
+  }
+
+  function render() {
+    const key = JSON.stringify([st && st.activity_id, st && st.phase, mine && mine.value, mine && mine.points, me.team_id, teams.map((t) => t.name)]);
+    const typing = document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName) && app.contains(document.activeElement);
+    if (key === lastKey && typing) return;
+    if (key !== lastKey) { if (!(st && act && lastKey.includes(act.id))) draft = {}; }
+    lastKey = key;
+    app.innerHTML = header() + body() + footer();
+    tick();
+  }
+
+  function tick() {
+    const el = document.getElementById('qtime');
+    if (el) {
+      const left = quizLeft();
+      el.textContent = Math.ceil(left) + ' s';
+      if (left <= 0 && !mine) { el.textContent = 'Time is up'; app.querySelectorAll('[data-act="choice"]').forEach((b) => (b.disabled = true)); }
+    }
+  }
+
+  async function send(value) {
+    if (sending || !act) return;
+    sending = true;
+    try {
+      const res = await rpc('submit_response', { p_pid: me.id, p_token: me.token, p_activity: act.id, p_value: value });
+      if (res === 'closed') toast('Answers are closed.');
+      else if (res === 'late') toast('Too late for this one.');
+      else if (res === 'already') toast('You already answered.');
+      else toast('Sent');
+      draft = {};
+      const r = await rows('responses', (q) => q.eq('activity_id', act.id).eq('participant_id', me.id));
+      mine = r[0] || null; lastKey = ''; render();
+    } catch (e) {
+      if (/join again/i.test(e.message)) { WR.setMe(null); location.reload(); return; }
+      toast(e.message, 4000);
+    } finally { sending = false; }
+  }
+
+  app.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+    if (b.dataset.act === 'choice') send({ choice: Number(b.dataset.i) });
+    if (b.dataset.act === 'score') send({ score: Number(b.dataset.n) });
+    if (b.dataset.act === 'rejoin') { e.preventDefault(); WR.setMe(null); location.reload(); }
+  });
+  app.addEventListener('input', (e) => {
+    if (e.target.id === 'otext') draft.text = e.target.value;
+    if (/^w\d+$/.test(e.target.id)) { draft.words = Array.from(app.querySelectorAll('[id^="w"]')).map((x) => x.value); }
+  });
+  app.addEventListener('submit', (e) => {
+    const f = e.target.closest('[data-form]'); if (!f) return;
+    e.preventDefault();
+    if (f.dataset.form === 'words') send({ words: Array.from(f.querySelectorAll('input')).map((x) => x.value.trim()).filter(Boolean) });
+    else send({ text: (f.querySelector('textarea').value || '').trim() });
+  });
+
+  start();
+})();
+</script>
+</body>
+</html>

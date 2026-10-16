@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Host · WASH Retreat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Mono:wght@600&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .hwrap{max-width:1100px;margin:0 auto;padding-block:16px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px}
+  .tabs button{border-radius:999px;border:1px solid var(--line);background:var(--surface);padding:8px 16px;font-weight:600;min-height:40px}
+  .tabs button[aria-current="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;align-items:start}
+  .seg{display:flex;flex-wrap:wrap;gap:6px}
+  .seg button{min-height:40px;border-radius:9px;border:1px solid var(--line);background:var(--surface);padding:6px 12px;font-weight:600}
+  .seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .badge{display:inline-block;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--muted)}
+  .badge.open{background:var(--good);color:var(--surface)}
+  .list{display:flex;flex-direction:column}
+  .li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .li:last-child{border-bottom:0}
+  .li .grow{flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
+  .li.current{background:color-mix(in srgb,var(--accent) 9%,transparent);border-radius:8px;padding-inline:8px}
+  details.ed{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface)}
+  details.ed[open]{box-shadow:0 1px 0 var(--line)}
+  details.ed summary{cursor:pointer;font-weight:600;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .ed-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px}
+  .ed-body .full{grid-column:1/-1}
+  .pts-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:6px 0}
+  .thumbs{display:flex;flex-wrap:wrap;gap:6px}
+  .thumbs a img{width:110px;height:84px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+  table{border-collapse:collapse;width:100%;font-size:14px}
+  td,th{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+  .tablewrap{overflow-x:auto}
+  .kpi{font-family:var(--mono);font-weight:600;font-size:28px;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="hwrap" id="app"><section class="card"><p class="muted">Loading…</p></section></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/lib.js"></script>
+<script>
+(function () {
+  const { $, esc, LETTERS, teamClass, rpc, rows, live, toast } = WR;
+  const app = $('#app');
+  if (!WR.configured) { WR.setupNotice(app); return; }
+
+  const KINDS = { poll: 'Vote', quiz: 'Quiz', words: 'Word cloud', rating: 'Rating 1–5', open: 'Open text' };
+  const SCREENS = [['lobby', 'Join screen'], ['activity', 'Question'], ['leaderboard', 'Top players'], ['teams', 'Team scores'], ['hunt', 'Hunt'], ['podium', 'Podium']];
+  let pin = ''; try { pin = sessionStorage.getItem('wr-pin') || ''; } catch (e) {}
+  let tab = 'run'; try { tab = sessionStorage.getItem('wr-tab') || 'run'; } catch (e) {}
+  const D = { st: {}, teams: [], players: [], acts: [], keys: {}, resp: [], points: [], board: [], cards: null, secret: '', finds: [], checks: [] };
+
+  /* ---------- login ---------- */
+  function login(msg) {
+    app.innerHTML = `<section class="card" style="max-width:420px;margin:10vh auto 0"><div class="eyebrow">Host</div><h1 style="font-size:28px">Facilitator sign-in</h1>
+      <form id="lf" class="stack"><label class="field" for="pin">Host passphrase<input id="pin" type="password" autocomplete="current-password" required></label>
+      ${msg ? `<p class="notice bad">${esc(msg)}</p>` : ''}<button class="btn primary block">Open the host panel</button></form></section>`;
+    $('#lf').addEventListener('submit', async (e) => {
+      e.preventDefault(); const p = $('#pin').value;
+      try { if (await rpc('host_check', { p_pin: p })) { pin = p; try { sessionStorage.setItem('wr-pin', p); } catch (x) {} boot(); } else login('That passphrase is not right.'); }
+      catch (x) { login(x.message); }
+    });
+  }
+  const H = (fn, args) => rpc(fn, Object.assign({ p_pin: pin }, args || {}));
+  async function act(fn, args, okMsg) {
+    try { const r = await H(fn, args); if (okMsg) toast(okMsg); return r; }
+    catch (e) { if (/passphrase/i.test(e.message)) { try { sessionStorage.removeItem('wr-pin'); } catch (x) {} login(e.message); } else toast(e.message, 4000); throw e; }
+  }
+
+  /* ---------- data ---------- */
+  async function refresh() {
+    const [st, teams, players, acts, points] = await Promise.all([rows('state'), rows('teams', (q) => q.order('id')), rows('participants', (q) => q.order('created_at')), rows('activities', (q) => q.order('position')), rows('team_points', (q) => q.order('created_at', { ascending: false }).limit(200))]);
+    D.st = st[0] || {}; D.teams = teams; D.players = players; D.acts = acts; D.points = points;
+    D.resp = D.st.activity_id ? await rows('responses', (q) => q.eq('activity_id', D.st.activity_id)) : [];
+    try { D.board = await rpc('scoreboard'); } catch (e) {}
+    if (tab === 'run' || tab === 'teams') paintTab(false);
+    paintHeader();
+  }
+  async function loadKeys() { D.keys = (await act('host_keys')) || {}; }
+  async function loadCards() { const r = await act('host_cards'); D.cards = r.cards || []; D.secret = r.secret || ''; }
+
+  /* ---------- shell ---------- */
+  function boot() {
+    app.innerHTML = `<header class="spread"><div class="stack" style="gap:2px"><span class="eyebrow">${esc(WR.cfg.eventName)}</span><h1 style="font-size:26px">Host panel</h1></div>
+      <div class="row"><span id="hdr" class="small muted"></span><a class="btn small" href="/screen" target="_blank" rel="noopener">Open the projector screen</a></div></header>
+      <nav class="tabs" id="tabs"></nav><div id="tab"></div>`;
+    paintTabs();
+    loadKeys().catch(() => {});
+    live(['state', 'activities', 'responses', 'participants', 'teams', 'team_points'], refresh, 5000);
+    paintTab(true);
+  }
+  function paintHeader() { const h = $('#hdr'); if (h) h.textContent = `${D.players.length} players joined`; }
+  function paintTabs() {
+    const T = [['run', 'Run'], ['questions', 'Questions'], ['teams', 'Teams & points'], ['hunt', 'Treasure hunt'], ['checks', 'Site checks'], ['reset', 'Reset']];
+    $('#tabs').innerHTML = T.map(([k, l]) => `<button data-tab="${k}" aria-current="${k === tab}">${l}</button>`).join('');
+  }
+  function typing() { const a = document.activeElement; return a && $('#tab') && $('#tab').contains(a) && /INPUT|TEXTAREA|SELECT/.test(a.tagName); }
+  async function paintTab(force) {
+    const el = $('#tab'); if (!el) return;
+    if (!force && typing()) return;
+    if (tab === 'questions' && force) await loadKeys().catch(() => {});
+    if (tab === 'hunt' && (force || !D.cards)) { await loadCards().catch(() => {}); try { D.finds = await H('host_finds'); } catch (e) {} }
+    if (tab === 'checks' && force) { try { D.checks = await H('host_assessments'); } catch (e) {} }
+    const y = window.scrollY;
+    el.innerHTML = ({ run: tRun, questions: tQuestions, teams: tTeams, hunt: tHunt, checks: tChecks, reset: tReset })[tab]();
+    if (!force) window.scrollTo(0, y);
+  }
+
+  /* ---------- Run ---------- */
+  function tRun() {
+    const st = D.st, a = D.acts.find((x) => x.id === st.activity_id);
+    const idx = a ? D.acts.indexOf(a) : -1;
+    const n = D.resp.length;
+    let ctl = '<p class="muted" style="margin:0">Pick a question below to show it.</p>';
+    if (a) {
+      const ph = st.phase;
+      ctl = `<div class="spread"><div class="stack" style="gap:4px;min-width:0"><span class="small muted">${KINDS[a.kind]} · #${a.position}</span><strong style="font-size:18px;overflow-wrap:anywhere">${esc(a.title)}</strong></div>
+        <span class="badge ${ph === 'open' ? 'open' : ''}">${({ idle: 'Not open yet', open: 'Answers open', closed: 'Closed', reveal: 'Answer shown' })[ph]}</span></div>
+        <div class="spread"><span><span class="kpi">${n}</span> <span class="muted">of ${D.players.length} answered</span></span>
+        ${a.kind === 'quiz' ? `<span class="small muted">Correct: ${D.keys[a.id] != null ? LETTERS[D.keys[a.id]] + '. ' + esc(a.options[D.keys[a.id]] || '') : 'not set'}</span>` : ''}</div>
+        <div class="row">
+          ${ph !== 'open' ? `<button class="btn primary" data-do="phase" data-v="open">${ph === 'idle' ? 'Open answers' : 'Open again'}</button>` : `<button class="btn" data-do="phase" data-v="closed">Close answers</button>`}
+          ${a.kind === 'quiz' && ph !== 'reveal' ? `<button class="btn primary" data-do="phase" data-v="reveal">Reveal answer</button>` : ''}
+          ${idx < D.acts.length - 1 ? `<button class="btn" data-do="show" data-id="${D.acts[idx + 1].id}">Next: #${D.acts[idx + 1].position}</button>` : ''}
+          <button class="btn danger" data-do="clear" data-id="${a.id}">Clear answers</button>
+        </div>`;
+    }
+    const podium = st.screen === 'podium' ? `<section class="card"><h2 style="font-size:18px">Podium</h2><div class="row"><button class="btn primary" data-do="podium" data-v="${Math.min(3, (st.podium_step || 0) + 1)}" ${(st.podium_step || 0) >= 3 ? 'disabled' : ''}>${['Reveal 3rd place', 'Reveal 2nd place', 'Reveal the winner', 'All revealed'][st.podium_step || 0]}</button><button class="btn" data-do="podium" data-v="0">Start over</button></div></section>` : '';
+    return `<div class="grid2">
+      <div class="stack">
+        <section class="card"><h2 style="font-size:18px">The screen shows</h2><div class="seg">${SCREENS.map(([k, l]) => `<button data-do="screen" data-v="${k}" aria-pressed="${st.screen === k}">${l}</button>`).join('')}</div></section>
+        <section class="card"><h2 style="font-size:18px">Now</h2>${ctl}</section>${podium}
+        <section class="card"><h2 style="font-size:18px">Team scores</h2>${(D.board || []).map((t) => `<div class="pts-row ${teamClass(t.team_id)}"><span class="row"><span class="team-dot"></span><strong>${esc(t.name)}</strong></span><span class="timer">${t.manual + t.hunt + t.quiz}</span></div>`).join('')}</section>
+      </div>
+      <section class="card"><h2 style="font-size:18px">Questions</h2><div class="list">${D.acts.map((x) => `<div class="li ${x.id === st.activity_id ? 'current' : ''}"><span class="badge">${KINDS[x.kind]}</span><span class="grow">#${x.position} ${esc(x.title)}</span>
+        <button class="btn small" data-do="show" data-id="${x.id}">Show</button><button class="btn small primary" data-do="showopen" data-id="${x.id}">Show + open</button></div>`).join('') || '<p class="muted">No questions yet. Add them in the Questions tab.</p>'}</div></section>
+    </div>`;
+  }
+
+  /* ---------- Questions ---------- */
+  function tQuestions() {
+    const ed = (a) => {
+      const opts = (a.options || []).join('\n');
+      const corr = D.keys[a.id];
+      return `<details class="ed" data-aid="${a.id}"><summary><span class="badge">${KINDS[a.kind]}</span>#${a.position} ${esc(a.title || 'Untitled')}</summary>
+        <form class="ed-body" data-form="act" data-id="${a.id}">
+          <label class="field full" for="t-${a.id}">Question<textarea id="t-${a.id}" name="title" rows="2">${esc(a.title)}</textarea></label>
+          <label class="field" for="k-${a.id}">Type<select id="k-${a.id}" name="kind">${Object.entries(KINDS).map(([k, l]) => `<option value="${k}" ${k === a.kind ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+          <label class="field" for="p-${a.id}">Order<input id="p-${a.id}" name="position" type="number" value="${a.position}"></label>
+          ${['poll', 'quiz'].includes(a.kind) ? `<label class="field full" for="o-${a.id}">Options, one per line (max 6)<textarea id="o-${a.id}" name="options" rows="4">${esc(opts)}</textarea></label>` : ''}
+          ${a.kind === 'rating' ? `<label class="field" for="lo-${a.id}">Label for 1<input id="lo-${a.id}" name="lo" value="${esc(a.options[0] || '')}"></label><label class="field" for="hi-${a.id}">Label for 5<input id="hi-${a.id}" name="hi" value="${esc(a.options[1] || '')}"></label>` : ''}
+          ${a.kind === 'quiz' ? `<label class="field" for="c-${a.id}">Correct answer<select id="c-${a.id}" name="correct">${(a.options || []).map((o, i) => `<option value="${i}" ${corr === i ? 'selected' : ''}>${LETTERS[i]}. ${esc(o)}</option>`).join('')}</select></label>
+            <label class="field" for="tl-${a.id}">Seconds to answer<input id="tl-${a.id}" name="time_limit" type="number" min="5" max="300" value="${a.time_limit}"></label>` : ''}
+          ${a.kind === 'words' ? `<label class="field" for="mw-${a.id}">Words per person<input id="mw-${a.id}" name="max_words" type="number" min="1" max="5" value="${a.max_words}"></label>` : ''}
+          <div class="row full"><button class="btn primary" type="submit">Save</button><button class="btn danger" type="button" data-do="delact" data-id="${a.id}">Delete</button></div>
+        </form></details>`;
+    };
+    return `<div class="stack"><section class="card"><h2 style="font-size:18px">Add a question</h2><div class="row">${Object.entries(KINDS).map(([k, l]) => `<button class="btn small" data-do="addact" data-v="${k}">+ ${l}</button>`).join('')}</div>
+      <p class="muted small" style="margin:0">Quiz: faster correct answers score up to 1000 points per player, and each correct answer gives the player's team 1 point.</p></section>
+      ${D.acts.map(ed).join('')}</div>`;
+  }
+  async function saveAct(form) {
+    const id = form.dataset.id; const a = D.acts.find((x) => x.id === id); const f = new FormData(form);
+    const kind = f.get('kind') || a.kind;
+    const data = { title: (f.get('title') || '').trim(), kind, position: Number(f.get('position')) || a.position };
+    if (f.has('options')) data.options = String(f.get('options')).split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 6);
+    if (f.has('lo')) data.options = [String(f.get('lo')).trim(), String(f.get('hi')).trim()];
+    if (f.has('correct')) data.correct = Number(f.get('correct'));
+    if (f.has('time_limit')) data.time_limit = Math.max(5, Number(f.get('time_limit')) || 20);
+    if (f.has('max_words')) data.max_words = Math.min(5, Math.max(1, Number(f.get('max_words')) || 1));
+    if (['poll', 'quiz'].includes(kind) && !['poll', 'quiz'].includes(a.kind) && !data.options) data.options = ['Option 1', 'Option 2'];
+    if (['poll', 'quiz'].includes(kind) && (data.options || a.options).length < 2) { toast('Add at least 2 options.'); return; }
+    if (kind === 'rating' && !f.has('lo') && a.kind !== 'rating') data.options = ['Low', 'High'];
+    if (kind === 'quiz' && data.correct == null && D.keys[id] == null) data.correct = 0;
+    await act('host_save_activity', { p_id: id, p_data: data }, 'Saved');
+    await refresh(); await loadKeys(); reopen = id; paintTab(true);
+  }
+  let reopen = null;
+
+  /* ---------- Teams ---------- */
+  function tTeams() {
+    const tot = (t) => t.manual + t.hunt + t.quiz;
+    return `<div class="grid2"><div class="stack">
+      <section class="card"><h2 style="font-size:18px">Give points</h2>
+        <label class="field" for="reason">Reason<input id="reason" placeholder="Helium stick, best pitch, bowling…"></label>
+        ${D.teams.map((t) => `<div class="pts-row ${teamClass(t.id)}"><span class="row"><span class="team-dot"></span><strong>${esc(t.name)}</strong></span><span class="row">${[-1, 1, 2, 5, 10].map((n) => `<button class="btn small" data-do="pts" data-team="${t.id}" data-n="${n}">${n > 0 ? '+' : '−'}${Math.abs(n)}</button>`).join('')}</span></div>`).join('')}
+      </section>
+      <section class="card"><h2 style="font-size:18px">Scores</h2><div class="tablewrap"><table><thead><tr><th>Team</th><th>Games</th><th>Hunt</th><th>Quiz</th><th>Total</th><th>Players</th></tr></thead><tbody>
+        ${(D.board || []).map((t) => `<tr><td>${esc(t.name)}</td><td>${t.manual}</td><td>${t.hunt}</td><td>${t.quiz}</td><td><strong>${tot(t)}</strong></td><td>${t.members}</td></tr>`).join('')}</tbody></table></div></section>
+      <section class="card"><h2 style="font-size:18px">Team names</h2>${D.teams.map((t) => `<form class="row" data-form="team" data-id="${t.id}"><input name="name" aria-label="Name of team ${t.id}" value="${esc(t.name)}" style="flex:1 1 160px"><button class="btn small">Rename</button></form>`).join('')}</section>
+      <section class="card"><h2 style="font-size:18px">Points history</h2><div class="list">${D.points.map((p) => `<div class="li"><span class="grow"><strong>${p.points > 0 ? '+' : ''}${p.points}</strong> ${esc((D.teams.find((t) => t.id === p.team_id) || {}).name || '')}${p.reason ? ' · ' + esc(p.reason) : ''}</span><button class="btn small" data-do="delpts" data-id="${p.id}">Remove</button></div>`).join('') || '<p class="muted">No points yet.</p>'}</div></section>
+    </div>
+    <section class="card"><h2 style="font-size:18px">Players (${D.players.length})</h2><div class="list">${D.players.map((p) => `<div class="li"><span class="grow">${esc(p.name)}</span>
+      <select aria-label="Team for ${esc(p.name)}" data-move="${p.id}" style="width:auto">${D.teams.map((t) => `<option value="${t.id}" ${t.id === p.team_id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select>
+      <button class="btn small danger" data-do="delplayer" data-id="${p.id}">Remove</button></div>`).join('') || '<p class="muted">Nobody has joined yet. Show the join screen.</p>'}</div></section></div>`;
+  }
+
+  /* ---------- Hunt ---------- */
+  function tHunt() {
+    const C = D.cards || [];
+    const ed = (c) => `<details class="ed" data-cid="${c.id}"><summary>${c.golden ? '<span class="badge" style="color:var(--gold)">Golden</span>' : ''}<span class="badge">${({ text: 'Answer', quiz: 'Multiple choice', photo: 'Photo task' })[c.kind]}</span><code>${esc(c.code)}</code> ${esc((c.prompt || '').slice(0, 70))}${c.letter_index != null && D.secret[c.letter_index] ? ` · letter <strong>${esc(D.secret[c.letter_index])}</strong>` : ''}</summary>
+      <form class="ed-body" data-form="card" data-id="${c.id}">
+        <label class="field full" for="cp-${c.id}">Question or task<textarea id="cp-${c.id}" name="prompt" rows="3">${esc(c.prompt)}</textarea></label>
+        <label class="field" for="ck-${c.id}">Type<select id="ck-${c.id}" name="kind"><option value="text" ${c.kind === 'text' ? 'selected' : ''}>Typed answer</option><option value="quiz" ${c.kind === 'quiz' ? 'selected' : ''}>Multiple choice</option><option value="photo" ${c.kind === 'photo' ? 'selected' : ''}>Photo task</option></select></label>
+        <label class="field" for="cc-${c.id}">Code on the card<input id="cc-${c.id}" name="code" value="${esc(c.code)}" maxlength="10"></label>
+        ${c.kind === 'quiz' ? `<label class="field full" for="co-${c.id}">Options, one per line<textarea id="co-${c.id}" name="options" rows="4">${esc((c.options || []).join('\n'))}</textarea></label>
+          <label class="field" for="ca-${c.id}">Correct option<select id="ca-${c.id}" name="answer">${(c.options || []).map((o, i) => `<option value="${i}" ${String(i) === c.answer ? 'selected' : ''}>${LETTERS[i]}. ${esc(o)}</option>`).join('')}</select></label>`
+          : c.kind === 'text' ? `<label class="field full" for="ca-${c.id}">Accepted answers, separated by | (empty = any answer)<input id="ca-${c.id}" name="answer" value="${esc(c.answer)}" placeholder="Litani|Litani river"></label>` : '<p class="muted small full" style="margin:0">Any photo completes this card. Check the photos below.</p>'}
+        <label class="field" for="cl-${c.id}">Letter number in the secret word (empty = none)<input id="cl-${c.id}" name="letter" type="number" min="1" value="${c.letter_index != null ? c.letter_index + 1 : ''}"></label>
+        <label class="field" for="cpt-${c.id}">Points<input id="cpt-${c.id}" name="points" type="number" min="0" value="${c.points}"></label>
+        <label class="row" for="cg-${c.id}" style="font-weight:600"><input id="cg-${c.id}" name="golden" type="checkbox" ${c.golden ? 'checked' : ''} style="width:auto"> Golden card</label>
+        <div class="row full"><button class="btn primary" type="submit">Save</button><button class="btn danger" type="button" data-do="delcard" data-id="${c.id}">Delete</button></div>
+      </form></details>`;
+    return `<div class="stack">
+      <section class="card"><h2 style="font-size:18px">Secret word</h2><form class="row" data-form="secret"><input name="secret" value="${esc(D.secret)}" aria-label="Secret word" style="flex:1 1 200px;text-transform:uppercase"><button class="btn small primary">Save</button></form>
+        <p class="muted small" style="margin:0">${D.secret.length} letters. Give each letter to one card below. Only you see this.</p></section>
+      <section class="card"><div class="spread"><h2 style="font-size:18px">Cards (${C.length})</h2><div class="row"><button class="btn small" data-do="addcard">+ Add card</button><a class="btn small primary" href="/print" target="_blank" rel="noopener">Print cards with QR codes</a></div></div></section>
+      ${C.map(ed).join('')}
+      <section class="card"><div class="spread"><h2 style="font-size:18px">Answers and photos sent</h2><button class="btn small" data-do="reloadfinds">Refresh</button></div>
+        <div class="list">${(D.finds || []).map((f) => `<div class="li"><span class="badge" style="${f.correct ? 'background:var(--good);color:var(--surface)' : ''}">${f.correct ? 'Correct' : 'Wrong'}</span><span class="grow"><code>${esc(f.code)}</code> · ${esc((D.teams.find((t) => t.id === f.team_id) || {}).name || '')} · ${esc(f.player || '')}${f.answer ? ' · “' + esc(f.answer) + '”' : ''}</span>${f.photo ? `<span class="thumbs"><a href="${esc(f.photo)}" target="_blank" rel="noopener"><img src="${esc(f.photo)}" alt="Hunt photo"></a></span>` : ''}</div>`).join('') || '<p class="muted">Nothing yet.</p>'}</div></section>
+    </div>`;
+  }
+  async function saveCard(form) {
+    const id = form.dataset.id; const c = (D.cards || []).find((x) => x.id === id); const f = new FormData(form);
+    const kind = f.get('kind');
+    const data = { prompt: String(f.get('prompt') || '').trim(), kind, code: String(f.get('code') || '').trim(), points: Math.max(0, Number(f.get('points')) || 0), golden: f.get('golden') === 'on', letter_index: f.get('letter') === '' ? '' : String(Math.max(0, Number(f.get('letter')) - 1)) };
+    if (f.has('options')) data.options = String(f.get('options')).split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 6);
+    if (f.has('answer')) data.answer = String(f.get('answer')).trim();
+    if (kind === 'quiz' && c.kind !== 'quiz') { data.options = data.options || ['', '']; data.answer = '0'; }
+    await act('host_save_card', { p_id: id, p_data: data }, 'Card saved');
+    reopenCard = id; paintTab(true);
+  }
+  let reopenCard = null;
+
+  /* ---------- Site checks ---------- */
+  function tChecks() {
+    const C = D.checks || [];
+    return `<div class="stack"><section class="card"><div class="spread"><h2 style="font-size:18px">Site checks sent (${C.length})</h2><button class="btn small" data-do="reloadchecks">Refresh</button></div></section>
+      ${C.map((c) => `<section class="card"><div class="spread"><strong style="font-size:18px">${esc(c.site || 'No name')}</strong><span class="badge">Risk score ${c.score ?? '–'}</span></div>
+        <span class="small muted">${esc(c.player || '')} · ${esc((D.teams.find((t) => t.id === c.team_id) || {}).name || '')} · ${new Date(c.at).toLocaleString()}${c.lat != null ? ` · <a href="https://www.google.com/maps?q=${c.lat},${c.lng}" target="_blank" rel="noopener">map</a>` : ''}</span>
+        <div class="tablewrap"><table><tbody>${Object.values(c.answers || {}).map((a) => `<tr><td>${esc(a.label)}</td><td>${esc(a.answer)}</td><td>${a.risk ? '+' + a.risk : ''}</td></tr>`).join('')}</tbody></table></div>
+        ${(c.photos || []).length ? `<div class="thumbs">${c.photos.map((p) => `<a href="${esc(p.url)}" target="_blank" rel="noopener" title="${esc(p.label)}"><img src="${esc(p.url)}" alt="${esc(p.label)}"></a>`).join('')}</div>` : ''}</section>`).join('') || '<section class="card"><p class="muted" style="margin:0">No site checks yet. Players open them from the link at the bottom of the game page.</p></section>'}</div>`;
+  }
+
+  /* ---------- Reset ---------- */
+  function tReset() {
+    const items = [['answers', 'Clear all answers', 'Removes every vote, word and quiz answer, including quiz points.'], ['points', 'Clear team points', 'Removes all points you gave by hand.'], ['hunt', 'Clear hunt progress', 'Removes all cards found. The cards stay.'], ['checks', 'Clear site checks', 'Removes all site checks sent.'], ['players', 'Remove all players', 'Everyone has to join again. Their answers are removed too.'], ['all', 'Reset everything', 'All of the above. Questions and hunt cards stay.']];
+    return `<section class="card"><h2 style="font-size:18px">Reset before the retreat</h2><p class="muted" style="margin:0">Use these after your test run. Each button asks you to click twice.</p>
+      <div class="list">${items.map(([k, l, d]) => `<div class="li"><span class="grow"><strong>${l}</strong><br><span class="small muted">${d}</span></span><button class="btn small danger" data-do="reset" data-v="${k}">${l}</button></div>`).join('')}</div></section>`;
+  }
+
+  /* ---------- events ---------- */
+  app.addEventListener('click', async (e) => {
+    const t = e.target.closest('[data-tab]');
+    if (t) { tab = t.dataset.tab; try { sessionStorage.setItem('wr-tab', tab); } catch (x) {} paintTabs(); paintTab(true); return; }
+    const b = e.target.closest('[data-do]'); if (!b || b.disabled) return;
+    if (b.classList.contains('danger') && !b.dataset.armed) {
+      b.dataset.armed = '1'; const old = b.textContent; b.textContent = 'Click again to confirm';
+      setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = old; } }, 3500); return;
+    }
+    const v = b.dataset.v, id = b.dataset.id;
+    try {
+      switch (b.dataset.do) {
+        case 'screen': await act('host_set_state', { p_patch: { screen: v } }); break;
+        case 'phase': await act('host_set_state', { p_patch: { phase: v } }); break;
+        case 'show': await act('host_set_state', { p_patch: { activity_id: id, screen: 'activity' } }); break;
+        case 'showopen': await act('host_set_state', { p_patch: { activity_id: id, screen: 'activity' } }); await act('host_set_state', { p_patch: { phase: 'open' } }); break;
+        case 'clear': await act('host_clear_responses', { p_activity: id }, 'Answers cleared'); break;
+        case 'podium': await act('host_set_state', { p_patch: { podium_step: Number(v) } }); break;
+        case 'addact': {
+          const defaults = { poll: ['Option 1', 'Option 2'], quiz: ['Answer A', 'Answer B', 'Answer C', 'Answer D'], rating: ['Low', 'High'], words: [], open: [] };
+          const nid = await act('host_save_activity', { p_id: null, p_data: { kind: v, title: 'New ' + KINDS[v].toLowerCase(), options: defaults[v], correct: v === 'quiz' ? 0 : null, max_words: v === 'words' ? 1 : 3 } }, 'Added');
+          await refresh(); await loadKeys(); reopen = nid; paintTab(true); return;
+        }
+        case 'delact': await act('host_delete_activity', { p_id: id }, 'Deleted'); await refresh(); paintTab(true); return;
+        case 'pts': { const r = ($('#reason') || {}).value || ''; await act('host_add_points', { p_team: Number(b.dataset.team), p_points: Number(b.dataset.n), p_reason: r.trim() }, `${Number(b.dataset.n) > 0 ? '+' : ''}${b.dataset.n} points`); break; }
+        case 'delpts': await act('host_delete_points', { p_id: Number(id) }, 'Removed'); break;
+        case 'delplayer': await act('host_delete_player', { p_pid: id }, 'Player removed'); break;
+        case 'addcard': { const nid = await act('host_save_card', { p_id: null, p_data: { kind: 'text', prompt: '', points: 1 } }, 'Card added'); reopenCard = nid; paintTab(true); return; }
+        case 'delcard': await act('host_delete_card', { p_id: id }, 'Card deleted'); paintTab(true); return;
+        case 'reloadfinds': paintTab(true); return;
+        case 'reloadchecks': paintTab(true); return;
+        case 'reset': await act('host_reset', { p_what: v }, 'Done'); break;
+      }
+      await refresh();
+    } catch (x) {}
+  });
+  app.addEventListener('change', async (e) => {
+    const m = e.target.dataset.move;
+    if (m) { try { await act('host_move_player', { p_pid: m, p_team: Number(e.target.value) }, 'Moved'); await refresh(); } catch (x) {} }
+    if (e.target.name === 'kind' && e.target.form && e.target.form.dataset.form) { e.target.form.requestSubmit(); }
+  });
+  app.addEventListener('submit', async (e) => {
+    const f = e.target.closest('[data-form]'); if (!f) return; e.preventDefault();
+    try {
+      if (f.dataset.form === 'act') await saveAct(f);
+      if (f.dataset.form === 'card') await saveCard(f);
+      if (f.dataset.form === 'team') { await act('host_rename_team', { p_team: Number(f.dataset.id), p_name: new FormData(f).get('name') }, 'Renamed'); await refresh(); }
+      if (f.dataset.form === 'secret') { await act('host_set_secret', { p_word: new FormData(f).get('secret') }, 'Secret word saved'); paintTab(true); }
+    } catch (x) {}
+  });
+  // Keep the edited item open after a save.
+  new MutationObserver(() => {
+    if (reopen) { const d = app.querySelector(`details[data-aid="${reopen}"]`); if (d) { d.open = true; reopen = null; } }
+    if (reopenCard) { const d = app.querySelector(`details[data-cid="${reopenCard}"]`); if (d) { d.open = true; d.scrollIntoView({ block: 'nearest' }); reopenCard = null; } }
+  }).observe(app, { childList: true, subtree: true });
+
+  if (pin) rpc('host_check', { p_pin: pin }).then((ok) => (ok ? boot() : login())).catch((x) => login(x.message));
+  else login();
+})();
+</script>
+</body>
+</html>

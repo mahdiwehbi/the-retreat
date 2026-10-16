@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Screen · WASH Retreat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Mono:wght@600&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>
+  html,body{height:100%}
+  body{font-size:clamp(16px,1.6vw,34px);overflow:hidden}
+  .scr{height:100%;display:flex;flex-direction:column;padding:clamp(16px,2.6vw,56px);padding-left:max(clamp(16px,2.6vw,56px),env(safe-area-inset-left,0px));padding-right:max(clamp(16px,2.6vw,56px),env(safe-area-inset-right,0px));gap:1em}
+  .top{display:flex;justify-content:space-between;align-items:baseline;gap:1em;flex-wrap:wrap}
+  .kick{font-size:.75em;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
+  .ttl{font-family:var(--display);font-weight:800;font-size:2.3em;line-height:1.05;letter-spacing:-.01em;text-wrap:balance;margin:0}
+  .main{flex:1;min-height:0;display:flex;flex-direction:column;gap:1em}
+  .foot{display:flex;justify-content:space-between;align-items:center;gap:1em;color:var(--muted);font-size:.7em}
+  .foot b{color:var(--ink);font-family:var(--mono)}
+  .bars{display:flex;flex-direction:column;gap:.9em;margin-block:auto}
+  .bar{display:grid;grid-template-columns:minmax(5em,14em) minmax(0,1fr) 4em;gap:.8em;align-items:center}
+  .bar .lab{display:flex;align-items:center;gap:.5em;font-weight:600;min-width:0}
+  .bar .lab span:last-child{overflow-wrap:anywhere}
+  .bar .k{font-family:var(--display);font-weight:800;color:var(--accent);width:1.4em;flex:none}
+  .track{height:1.9em;background:var(--soft);border-radius:999px;overflow:hidden}
+  .fill{height:100%;background:var(--tc,var(--accent));border-radius:999px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+  .num{font-family:var(--mono);font-weight:600;font-size:1.4em;text-align:right;font-variant-numeric:tabular-nums}
+  .bar.right .fill{background:var(--good)} .bar.right .k{color:var(--good)}
+  .bar.dim{opacity:.45}
+  .lobby{flex:1;display:grid;grid-template-columns:auto minmax(0,1fr);gap:2.4em;align-items:center}
+  .qr{background:#fff;padding:.7em;border-radius:.6em;line-height:0}
+  .qr img,.qr canvas{width:min(34vh,26vw)!important;height:auto!important;display:block}
+  .url{font-family:var(--display);font-weight:800;font-size:2.2em;line-height:1.05;overflow-wrap:anywhere}
+  .teamcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1em}
+  .teamcol{border-top:.3em solid var(--tc);padding-top:.4em;min-width:0}
+  .teamcol h3{font-size:1.1em;display:flex;justify-content:space-between;gap:.5em}
+  .names{display:flex;flex-wrap:wrap;gap:.25em .7em;font-size:.75em;margin-top:.3em}
+  .cloud{flex:1;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;align-items:baseline;gap:.15em .7em}
+  .cloud span{font-family:var(--display);font-weight:800;line-height:1.05;color:var(--wc)}
+  .w0{--wc:var(--t1)} .w1{--wc:var(--t2)} .w2{--wc:var(--t3)} .w3{--wc:var(--accent)} .w4{--wc:var(--ink)}
+  .opens{display:grid;grid-template-columns:repeat(auto-fill,minmax(13em,1fr));gap:.7em;align-content:start;overflow:hidden}
+  .opens div{background:var(--surface);border:1px solid var(--line);border-radius:.6em;padding:.6em .8em;font-size:.85em;overflow-wrap:anywhere}
+  .rating{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2em;align-items:center;margin-block:auto}
+  .avg{font-family:var(--display);font-weight:800;font-size:6em;line-height:1;color:var(--accent)}
+  .big-timer{font-family:var(--mono);font-weight:600;font-size:2em;font-variant-numeric:tabular-nums}
+  .big-timer.low{color:var(--t2)}
+  .lb{display:flex;flex-direction:column;gap:.45em;margin-block:auto}
+  .lb-row{display:grid;grid-template-columns:2em minmax(0,1fr) 6em;gap:.8em;align-items:center;background:var(--surface);border:1px solid var(--line);border-left:.35em solid var(--tc);border-radius:.5em;padding:.4em .8em}
+  .lb-row .rk{font-family:var(--display);font-weight:800;color:var(--muted)}
+  .lb-row .nm{font-weight:600;overflow-wrap:anywhere}
+  .lb-row .pt{font-family:var(--mono);font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+  .lb-row.first{font-size:1.15em}
+  .podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2em;align-items:end;flex:1}
+  .place{display:flex;flex-direction:column;align-items:center;gap:.4em;text-align:center;min-width:0}
+  .place .pn{font-family:var(--display);font-weight:800;font-size:1.6em;line-height:1.1;overflow-wrap:anywhere}
+  .place .pp{font-family:var(--mono);color:var(--muted)}
+  .plinth{width:100%;border-radius:.5em .5em 0 0;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:2.4em;background:var(--soft);color:var(--muted)}
+  .place.on .plinth{background:var(--tc);color:var(--on-team)}
+  .p1 .plinth{height:42vh} .p2 .plinth{height:30vh} .p3 .plinth{height:20vh}
+  .hunt{display:flex;flex-direction:column;gap:1.2em;margin-block:auto}
+  .hunt-head{display:flex;justify-content:space-between;align-items:baseline;gap:.6em;flex-wrap:wrap}
+  .hunt-head b{display:flex;align-items:center;gap:.5em;font-size:1.2em}
+  .tiles{display:flex;flex-wrap:wrap;gap:.35em;margin-top:.35em}
+  .tiles span{width:1.9em;height:2.3em;display:grid;place-items:center;border:.12em solid var(--line);border-radius:.3em;font-family:var(--display);font-weight:800;font-size:1.3em}
+  .tiles span.on{background:var(--tc);border-color:var(--tc);color:var(--on-team)}
+  .empty{margin:auto;text-align:center;color:var(--muted);max-width:30em}
+  .empty b{display:block;font-family:var(--display);font-size:2em;color:var(--ink)}
+  .mini{display:flex;align-items:center;gap:.6em}
+  .mini .qr{padding:.25em;border-radius:.3em}
+  .mini .qr img,.mini .qr canvas{width:3.4em!important}
+  @media (max-width:760px){.lobby{grid-template-columns:minmax(0,1fr)}.teamcols{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<div class="scr" id="scr"><div class="empty"><b>Loading…</b></div></div>
+<div id="qr-src" hidden></div>
+<div id="qr-mini" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="/config.js"></script>
+<script src="/lib.js"></script>
+<script>
+(function () {
+  const { $, esc, LETTERS, teamClass, rpc, rows, live, syncClock, now } = WR;
+  const scr = $('#scr');
+  if (!WR.configured) { scr.innerHTML = '<div class="empty"><b>Setup needed</b>Add the Supabase details in config.js.</div>'; return; }
+  const joinUrl = location.origin + '/';
+  const host = location.host.replace(/^www\./, '');
+  try {
+    new QRCode($('#qr-src'), { text: joinUrl, width: 512, height: 512, correctLevel: QRCode.CorrectLevel.M });
+    new QRCode($('#qr-mini'), { text: joinUrl, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.M });
+  } catch (e) {}
+  const qrCache = {};
+  const qrImg = (id) => {
+    if (!qrCache[id]) {
+      const n = $(id); const c = n && n.querySelector('canvas'); const i = n && n.querySelector('img[src]');
+      try { qrCache[id] = c ? c.toDataURL('image/png') : i ? i.src : ''; } catch (e) { qrCache[id] = i ? i.src : ''; }
+    }
+    return qrCache[id] ? `<div class="qr"><img src="${qrCache[id]}" alt="QR code to join"></div>` : '';
+  };
+
+  let D = { st: null, teams: [], players: [], acts: [], resp: [], board: null, hunt: null };
+  let lastHtml = '';
+
+  async function refresh() {
+    const [st, teams, players, acts] = await Promise.all([rows('state'), rows('teams', (q) => q.order('id')), rows('participants'), rows('activities', (q) => q.order('position'))]);
+    D.st = st[0] || {}; D.teams = teams; D.players = players; D.acts = acts;
+    const screen = D.st.screen;
+    if (screen === 'activity' && D.st.activity_id) D.resp = await rows('responses', (q) => q.eq('activity_id', D.st.activity_id));
+    else if (screen === 'leaderboard') D.resp = await rows('responses', (q) => q.gt('points', 0));
+    if (screen === 'teams' || screen === 'podium') D.board = await rpc('scoreboard');
+    if (screen === 'hunt') { D.hunt = await rpc('hunt_board'); D.board = await rpc('scoreboard'); }
+    paint();
+  }
+
+  const teamName = (id) => (D.teams.find((t) => t.id === id) || {}).name || 'Team';
+  const playerName = (id) => (D.players.find((p) => p.id === id) || {}).name || 'Someone';
+
+  function foot() {
+    return `<div class="foot"><span class="mini">${qrImg('#qr-mini')}<span>Join at <b>${esc(host)}</b></span></span><span>${esc(WR.cfg.eventName)}</span></div>`;
+  }
+
+  function vLobby() {
+    const byTeam = D.teams.map((t) => ({ t, ps: D.players.filter((p) => p.team_id === t.id) }));
+    return `<div class="lobby">${qrImg('#qr-src')}<div class="stack" style="gap:.6em;min-width:0">
+      <div class="kick">${esc(WR.cfg.eventName)}</div><div class="ttl">Scan to join</div>
+      <div class="muted">or open</div><div class="url">${esc(host)}</div>
+      <div class="muted">${D.players.length} joined</div></div></div>
+      <div class="teamcols">${byTeam.map(({ t, ps }) => `<div class="teamcol ${teamClass(t.id)}"><h3><span>${esc(t.name)}</span><span class="timer">${ps.length}</span></h3><div class="names">${ps.map((p) => `<span>${esc(p.name)}</span>`).join('')}</div></div>`).join('')}</div>`;
+  }
+
+  function bars(items, max, cls) {
+    return `<div class="bars">${items.map((it, i) => `<div class="bar ${it.cls || cls || ''}"><div class="lab">${it.k ? `<span class="k">${esc(it.k)}</span>` : '<span class="team-dot"></span>'}<span>${esc(it.label)}</span></div>
+      <div class="track"><div class="fill" style="width:${Math.max(1.5, (it.n / Math.max(1, max)) * 100)}%"></div></div><div class="num">${it.n}</div></div>`).join('')}</div>`;
+  }
+
+  function vActivity() {
+    const st = D.st, a = D.acts.find((x) => x.id === st.activity_id);
+    if (!a) return `<div class="empty"><b>Get ready</b>The next question is coming.</div>`;
+    const R = D.resp; const count = R.length;
+    const status = st.phase === 'open' ? (a.kind === 'quiz' ? '' : `${count} answer${count === 1 ? '' : 's'}`)
+      : st.phase === 'idle' ? 'Get ready' : st.phase === 'reveal' ? 'Answer' : 'Answers closed';
+    const head = `<div class="top"><div class="stack" style="gap:.3em;min-width:0"><div class="kick">${({ poll: 'Vote on your phone', quiz: 'Quiz', words: 'Word cloud', rating: 'Rating', open: 'Open question' })[a.kind]}</div><h1 class="ttl">${esc(a.title)}</h1></div>
+      <div class="stack" style="align-items:flex-end;gap:.2em">${a.kind === 'quiz' && st.phase === 'open' ? `<span class="big-timer" data-timer></span><span class="muted">${count} answered</span>` : `<span class="muted">${status}</span>`}</div></div>`;
+
+    if (st.phase === 'idle') return head + `<div class="empty"><b>Phones ready?</b>Answers open in a moment.</div>`;
+
+    if (a.kind === 'poll' || a.kind === 'quiz') {
+      const counts = a.options.map((_, i) => R.filter((r) => r.value.choice === i).length);
+      const reveal = a.kind === 'quiz' && st.phase === 'reveal';
+      const hideCounts = a.kind === 'quiz' && !reveal;
+      const items = a.options.map((o, i) => ({ k: LETTERS[i], label: o, n: hideCounts ? 0 : counts[i], cls: reveal ? (i === st.revealed_correct ? 'right' : 'dim') : '' }));
+      let extra = '';
+      if (reveal) {
+        const fast = R.filter((r) => r.correct).sort((x, y) => x.elapsed_ms - y.elapsed_ms).slice(0, 5);
+        extra = fast.length ? `<div class="lb">${fast.map((r, i) => `<div class="lb-row ${teamClass(r.team_id)}"><span class="rk">${i + 1}</span><span class="nm">${esc(playerName(r.participant_id))}</span><span class="pt">+${r.points}</span></div>`).join('')}</div>` : '<div class="empty">Nobody got this one.</div>';
+      }
+      if (hideCounts) return head + `<div class="bars">${a.options.map((o, i) => `<div class="bar"><div class="lab"><span class="k">${LETTERS[i]}</span><span>${esc(o)}</span></div><div></div><div></div></div>`).join('')}</div>`;
+      return head + `<div style="display:grid;grid-template-columns:${reveal ? 'minmax(0,1.3fr) minmax(0,1fr)' : 'minmax(0,1fr)'};gap:2em;flex:1;min-height:0;align-items:center">${bars(items, Math.max(...counts, 1))}${extra}</div>`;
+    }
+    if (a.kind === 'words') {
+      const m = new Map();
+      R.forEach((r) => (r.value.words || []).forEach((w) => { const k = w.trim().toLowerCase(); if (!k) return; const e = m.get(k) || { w: w.trim(), n: 0 }; e.n++; m.set(k, e); }));
+      const list = [...m.values()].sort((x, y) => y.n - x.n).slice(0, 60);
+      const max = Math.max(1, ...list.map((x) => x.n));
+      return head + (list.length ? `<div class="cloud">${list.map((x, i) => `<span class="w${i % 5}" style="font-size:${(1 + 3.2 * (x.n / max)).toFixed(2)}em">${esc(x.w)}</span>`).join('')}</div>` : `<div class="empty"><b>Waiting for words</b>Type yours on your phone.</div>`);
+    }
+    if (a.kind === 'rating') {
+      const scores = R.map((r) => r.value.score);
+      const avg = scores.length ? scores.reduce((s, x) => s + x, 0) / scores.length : 0;
+      const dist = [1, 2, 3, 4, 5].map((n) => ({ k: String(n), label: n === 1 ? (a.options[0] || '') : n === 5 ? (a.options[1] || '') : '', n: scores.filter((x) => x === n).length }));
+      return head + `<div class="rating"><div class="stack" style="align-items:center;gap:0"><div class="avg">${scores.length ? avg.toFixed(1) : '–'}</div><div class="muted">average of ${scores.length}</div></div>${bars(dist, Math.max(1, ...dist.map((d) => d.n)))}</div>`;
+    }
+    const recent = [...R].sort((x, y) => new Date(y.created_at) - new Date(x.created_at)).slice(0, 24);
+    return head + (recent.length ? `<div class="opens">${recent.map((r) => `<div>${esc(r.value.text)}</div>`).join('')}</div>` : `<div class="empty"><b>Waiting for answers</b>Type yours on your phone.</div>`);
+  }
+
+  function vLeaderboard() {
+    const tot = new Map();
+    D.resp.forEach((r) => { const e = tot.get(r.participant_id) || { id: r.participant_id, pts: 0, team: r.team_id }; e.pts += r.points; tot.set(r.participant_id, e); });
+    const list = [...tot.values()].sort((a, b) => b.pts - a.pts).slice(0, 10);
+    return `<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Quiz</div><h1 class="ttl">Top players</h1></div></div>` +
+      (list.length ? `<div class="lb">${list.map((e, i) => `<div class="lb-row ${teamClass(e.team)} ${i === 0 ? 'first' : ''}"><span class="rk">${i + 1}</span><span class="nm">${esc(playerName(e.id))}</span><span class="pt">${e.pts}</span></div>`).join('')}</div>` : `<div class="empty"><b>No points yet</b>Play a quiz question first.</div>`);
+  }
+
+  const totals = () => (D.board || []).map((t) => ({ ...t, total: t.manual + t.hunt + t.quiz }));
+  function vTeams() {
+    const T = totals(); const max = Math.max(1, ...T.map((t) => t.total)); const top = Math.max(...T.map((t) => t.total), 0);
+    return `<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Live standings</div><h1 class="ttl">Team scores</h1></div></div>
+      <div class="bars">${T.map((t) => `<div class="bar ${teamClass(t.team_id)}"><div class="lab"><span class="team-dot"></span><span>${esc(t.name)}${t.total === top && top > 0 ? ' <span style="color:var(--good);font-size:.7em">Leading</span>' : ''}</span></div>
+        <div class="track"><div class="fill" style="width:${Math.max(1.5, (Math.max(0, t.total) / max) * 100)}%"></div></div><div class="num">${t.total}</div></div>`).join('')}</div>
+      <div class="muted" style="font-size:.7em">Games ${T.map((t) => `${esc(t.name)} ${t.manual}`).join(' · ')} — Hunt ${T.map((t) => t.hunt).join(' / ')} — Correct quiz answers ${T.map((t) => t.quiz).join(' / ')}</div>`;
+  }
+
+  function vPodium() {
+    const T = totals().sort((a, b) => b.total - a.total || a.team_id - b.team_id); const step = D.st.podium_step || 0;
+    const place = (p, t) => { const on = (p === 3 && step >= 1) || (p === 2 && step >= 2) || (p === 1 && step >= 3);
+      return `<div class="place p${p} ${t ? teamClass(t.team_id) : ''} ${on ? 'on' : ''}"><div class="pn">${on && t ? esc(t.name) : '?'}</div><div class="pp">${on && t ? t.total + ' points' : '&nbsp;'}</div><div class="plinth">${p}</div></div>`; };
+    return `<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Awards</div><h1 class="ttl">${step >= 3 && T[0] ? esc(T[0].name) + ' wins the retreat' : 'And the winner is…'}</h1></div></div>
+      <div class="podium">${place(2, T[1])}${place(1, T[0])}${place(3, T[2])}</div>`;
+  }
+
+  function vHunt() {
+    const H = D.hunt || { length: 0, cards: 0, teams: [] };
+    return `<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Treasure hunt · ${H.cards} cards hidden</div><h1 class="ttl">Find the secret word</h1></div></div>
+      <div class="hunt">${D.teams.map((t) => { const h = (H.teams || []).find((x) => x.team_id === t.id) || { found: 0, letters: [] }; const got = new Map((h.letters || []).map((x) => [x.i, x.l]));
+        return `<div class="${teamClass(t.id)}"><div class="hunt-head"><b><span class="team-dot"></span>${esc(t.name)}</b><span class="muted">${h.found} of ${H.cards} cards</span></div>
+        <div class="tiles">${Array.from({ length: H.length }, (_, i) => `<span class="${got.has(i) ? 'on' : ''}">${got.has(i) ? esc(got.get(i)) : ''}</span>`).join('')}</div></div>`; }).join('')}</div>`;
+  }
+
+  function paint() {
+    const v = ({ lobby: vLobby, activity: vActivity, leaderboard: vLeaderboard, teams: vTeams, podium: vPodium, hunt: vHunt })[D.st.screen] || vLobby;
+    const html = `<div class="main">${v()}</div>${D.st.screen === 'lobby' ? '' : foot()}`;
+    if (html !== lastHtml) { scr.innerHTML = html; lastHtml = html; }
+    tick();
+  }
+
+  function tick() {
+    const el = scr.querySelector('[data-timer]'); if (!el) return;
+    const a = D.acts.find((x) => x.id === D.st.activity_id); if (!a || !D.st.opened_at) return;
+    const left = Math.max(0, a.time_limit - (now() - new Date(D.st.opened_at).getTime()) / 1000);
+    el.textContent = left > 0 ? Math.ceil(left) + ' s' : "Time's up";
+    el.classList.toggle('low', left <= 5);
+  }
+
+  syncClock();
+  setInterval(tick, 250);
+  setTimeout(() => live(['state', 'responses', 'participants', 'activities', 'teams', 'team_points'], refresh, 4000), 300);
+  document.addEventListener('dblclick', () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) {} });
+})();
+</script>
+</body>
+</html>
