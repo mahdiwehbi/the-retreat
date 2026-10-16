@@ -13,6 +13,10 @@
   [hidden]{display:none !important}
   @media screen{#out{zoom:var(--z,1.35)} #out .solo-badge{display:inline-block;margin:6mm}}
   body{margin:0;background:#E9EFF0;color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif}
+  .tcf{--tc:#0B3954;--tl:#E3EEF6}
+  .badge .facnote{margin-top:9mm;font-family:'Fraunces',serif;font-weight:700;font-size:18pt;color:var(--tc);text-align:center;line-height:1.2}
+  .badge .facnote span{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:10pt;color:var(--muted)}
+  .badge .facnote .drop{display:block;margin:0 auto 2mm;width:11mm;height:15mm}
   .tc1{--tc:var(--t1);--tl:var(--l1)} .tc2{--tc:var(--t2);--tl:var(--l2)} .tc3{--tc:var(--t3);--tl:var(--l3)}
   /* hub */
   .hub{max-width:880px;margin:0 auto;padding:20px 16px 60px;display:flex;flex-direction:column;gap:14px}
@@ -112,6 +116,21 @@
   .ag>div.mv{background:#FFE9B8;font-weight:700}
   .ag>div.mv span:last-child{color:var(--ink)}
   .key{display:inline-block;width:4mm;height:4mm;background:#FFE9B8;border:0.2mm solid #E0B95A;vertical-align:middle}
+  .a4l{width:297mm;height:210mm;padding:12mm}
+  .halves{grid-template-columns:1fr;grid-auto-rows:1fr;gap:0;padding:0}
+  .half{display:flex;align-items:center;justify-content:center;border-bottom:0.3mm dashed #bbb;padding:10mm;text-align:center}
+  .tl-head .mo{font-family:'Fraunces',serif;font-weight:700;font-size:54pt;line-height:1.05;color:var(--accent)}
+  .kick{font-size:10pt;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--tc,var(--accent))}
+  .tl-key{display:flex;flex-direction:column;gap:5mm;font-size:24pt;font-weight:700;text-align:left}
+  .tl-key .row3{display:flex;gap:6mm;align-items:center}.sw{width:18mm;height:18mm;border-radius:2mm;display:inline-block}.sw.g{background:#8FD18B}.sw.r{background:#F28B82}.sw.y{background:#FFE07A}
+  .fold{grid-template-rows:1fr 1fr;padding:0}.foldhalf{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4mm;border-bottom:0.3mm dashed #bbb}.foldhalf:first-child{transform:rotate(180deg)}
+  .foldhalf .tname{font-family:'Fraunces',serif;font-weight:700;font-size:64pt;color:var(--tc)}
+  .sign{display:flex;flex-direction:column;align-items:center;gap:6mm;padding:14mm;text-align:center}.sign h2{font-family:'Fraunces',serif;font-size:40pt;margin:0;line-height:1.05}.sign p{font-size:15pt;margin:0}
+  .lpw{display:grid;grid-template-columns:repeat(3,1fr);gap:6mm;width:100%;margin-top:6mm}.lpw div{border:0.6mm solid var(--accent);border-radius:4mm;padding:8mm 4mm;display:flex;flex-direction:column;gap:2mm}.lpw b{font-size:22pt;color:var(--accent)}
+  .ws{width:100%;border-collapse:collapse;font-size:11pt}.ws th,.ws td{border:0.3mm solid #9fb3b7;padding:3mm 2mm;text-align:left}.ws td{height:12mm}.ws th:first-child,.ws td:first-child{width:9mm}.ws th:nth-child(2){width:18mm}
+  .quarters{grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:0;padding:0}.pc{border:0.3mm dashed #bbb;padding:8mm;display:flex;flex-direction:column;gap:3.5mm}.pcl{font-family:'Fraunces',serif;font-size:15pt;font-weight:700}.ln{border-bottom:0.3mm solid #c5d2d5;height:7mm}.pcf{margin-top:auto;display:flex;justify-content:space-between;align-items:center;font-size:9pt;color:var(--muted)}.pcf img{height:8mm}
+  .cert{height:100%;border:2mm double #C9A227;border-radius:4mm;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5mm;text-align:center}.cert .gd{font-family:'Fraunces',serif;font-size:20pt;color:#A07C10;font-weight:700;letter-spacing:.04em}.cert h2{font-family:'Fraunces',serif;font-size:40pt;margin:0}.cert .to{font-size:13pt;color:var(--muted)}.cert .nm{width:150mm;border-bottom:0.5mm solid var(--ink);height:16mm}
+  .hotel{padding:4mm 6mm;font-size:12pt;line-height:1.5}.hotel h2{font-size:18pt;margin:1mm 0}.hotel h3{font-size:13pt;margin:6mm 0 1mm;color:var(--accent)}.hotel ul{margin:0;padding-left:6mm}
   .scen{border-top:4mm solid var(--accent);padding:12mm;display:flex;flex-direction:column;gap:5mm}
   .scen h2{font-family:'Fraunces',serif;font-size:30pt;margin:0}
   .scen p{font-size:14pt;line-height:1.5;margin:0}
@@ -132,8 +151,8 @@
   <h1>Print day checklist</h1>
   <p class="muted" style="margin:0">Everything to print for Where the Waters Meet. Tick each item once printed; the ticks stay on this computer.</p>
   <section class="box" id="roomsBox"><p class="muted">Loading…</p></section>
-  <section class="box"><h2>From this site</h2><div id="items"></div></section>
-  <section class="box"><h2>Not on this site</h2><div id="others"></div></section>
+  <section class="box"><h2>Print</h2><div id="items"></div></section>
+  <section class="box"><h2>Bring and buy</h2><p class="small muted" style="margin:0">Things to pack. Tick them as they go in the car.</p><div id="others"></div></section>
 </div>
 <div class="preview-bar" id="pbar" hidden>
   <button class="btn" id="back">← Back to the checklist</button>
@@ -170,7 +189,8 @@
   await load();
   const tname = (id) => (teams.find((t) => t.id === id) || {}).name || 'Team ' + id;
   const tc = (id) => 'tc' + (((id || 1) - 1) % 3 + 1);
-  const badges = () => cards.filter((c) => /^R\d/.test(c.code));
+  const FAC = { code: '', holder: 'Mahdi Wehbi', team_id: null, fac: true };
+  const badges = () => cards.filter((c) => /^R\d/.test(c.code)).concat([FAC]);
   const beds = () => cards.filter((c) => /^H\d/.test(c.code));
   const W = '<svg viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true"><path d="M0 3 C12 0 25 6 37 3 C50 0 62 6 75 3 C87 0 95 5 100 3 V6 H0 Z" fill="#fff"/></svg>';
   const WF = '<svg viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><path d="M0 2 C12 0 25 4 37 2 C50 0 62 4 75 2 C87 0 95 3 100 2 V4 H0 Z" fill="currentColor"/></svg>';
@@ -178,13 +198,17 @@
 
   const TICKS = ['Be back at <b>15:00 sharp</b> in the meeting room', 'Be down at <b>17:00 sharp</b> to move to Wadi Chamsine', 'Take your breakfast and <b>check out before 11:00</b>', 'We move at <b>11:30 sharp</b> to Taanayel'];
   const roomOf = (name) => { const n = String(name || '').trim().toLowerCase(); const h = cards.find((x) => /^H\d/.test(x.code) && String(x.holder || '').trim().toLowerCase() === n && x.room); return h ? h.room : ''; };
-  const back = (c) => `<div class="badge back ${tc(c.team_id)}"><div class="bhead"><img src="/logo.png" alt=""><div><div class="theme">AGENDA</div><div class="ev">Times in yellow: be there, we move</div></div></div>
+  const back = (c) => `<div class="badge back ${c.fac ? 'tcf' : tc(c.team_id)}"><div class="bhead"><img src="/logo.png" alt=""><div><div class="theme">AGENDA</div><div class="ev">Times in yellow: be there, we move</div></div></div>
       ${AGENDA.map(([d, rows]) => `<div class="bday">${esc(d)}</div>${rows.map(([t, x, pl, mv, sh]) => `<div class="br ${mv ? 'mv' : ''}"><b>${esc(t.split('–')[0])}</b><span>${esc(sh || x)}</span></div>`).join('')}`).join('')}
-      <div class="foot"><span style="position:absolute;left:0;top:-3mm;width:100%;height:4mm;color:var(--tc)">${WF}</span>${esc((c.holder || '').toUpperCase())} · ${esc(tname(c.team_id).toUpperCase())}</div></div>`;
+      <div class="foot"><span style="position:absolute;left:0;top:-3mm;width:100%;height:4mm;color:var(--tc)">${WF}</span>${esc((c.holder || '').toUpperCase())} · ${c.fac ? 'THE WATERMAN' : esc(tname(c.team_id).toUpperCase())}</div></div>`;
   // Double-sided: A4 backs are mirrored left-right so they line up when the sheet flips on the long edge.
   const duplexA4 = (list) => chunk(list, 4).map((g) => { const b = g.slice(); while (b.length < 4) b.push(null); const m = [b[1], b[0], b[3], b[2]];
     return `<section class="sheet a4 badges">${g.map(badge).join('')}</section><section class="sheet a4 badges">${m.map((c) => c ? back(c) : '<div></div>').join('')}</section>`; }).join('');
   const badge = (c) => { const [f, ...l] = (c.holder || '______').split(' ');
+    if (c.fac) return `<div class="badge tcf"><div class="band">${W}</div><img class="logo" src="/logo-t.png" alt="WaSH Sector Lebanon"><div class="theme">WHERE THE WATERS MEET</div><div class="ev">WASH Sector Coordination Team Retreat</div>
+      <div class="first">${esc(f)}</div><div class="last">${esc(l.join(' '))}</div><div class="pill">The Waterman</div>
+      <div class="facnote"><svg class="drop" viewBox="0 0 24 32" width="40" height="54" aria-hidden="true"><path d="M12 1 C12 1 2 14 2 21 a10 10 0 0 0 20 0 C22 14 12 1 12 1z" fill="currentColor"/></svg>Facilitator<br><span>Lost? Late? Thirsty? Ask me.</span></div>
+      <div class="foot" style="color:#fff"><span style="position:absolute;left:0;top:-3mm;width:100%;height:4mm;color:var(--tc)">${WF}</span>22–23 OCTOBER 2026</div></div>`;
     return `<div class="badge ${tc(c.team_id)}"><div class="band">${W}</div><img class="logo" src="/logo-t.png" alt="WaSH Sector Lebanon"><div class="theme">WHERE THE WATERS MEET</div><div class="ev">WASH Sector Coordination Team Retreat</div>
       <div class="first">${esc(f)}</div><div class="last">${esc(l.join(' '))}</div><div class="pill">${esc(tname(c.team_id))}</div>
       <div class="qr"><img src="${qr(O + '/card?c=' + encodeURIComponent(c.code))}" alt="QR code"></div>${roomOf(c.holder) ? `<div class="roomtag">Room ${esc(roomOf(c.holder))}</div>` : ''}
@@ -245,7 +269,35 @@
     { k: 'tents', t: 'Tent cards', n: () => tents.length + ' cards, ' + Math.round(tents.length / Math.max(1, teams.length)) + ' per team', size: 'A4',
       render: () => a4(tents, 6, (t) => `<div class="card ${tc(t.team_id)}" style="border-color:var(--tc)"><div class="top">${esc(tname(t.team_id))} · Site ${t.team_id}</div><div class="tent"><div><div class="big">Tent ${t.number}</div><div class="desc">${esc(t.card)}</div></div><div class="qr"><img src="${qr(O + '/sap?t=' + encodeURIComponent(t.code))}" alt="QR code"></div></div>${sf('Day 2 · The Expedition · Site test')}</div>`) }
   ];
-  const OTHERS = [['agenda', 'Agenda', 'From the Retreat Room Layout canvas (Agenda artboard). Remove TENTATIVE first if it is final.'], ['layout', 'Room setup for the hotel', 'Retreat Room Layout canvas, first artboard. Send or print for the hotel.'], ['referrals', 'Referrals tab extract × 3', 'Murky Waters (data detective): one printed extract per team.'], ['postcards', 'Postcards for the letter to your future self', 'Ripples, closing at Chams.']];
+  const STATIONS = [['1', 'ActivityInfo and the 3W', 'How partners report, and how it lands in the 3W tab.'], ['2', 'The Referrals tab', 'How a need is referred, booked and closed.'], ['3', 'Gap and PIN analysis', 'The gap analysis and PIN Analysis tabs.'], ['4', 'Collective shelter tabs', 'Shelters inside and outside: what we track and why.'], ['5', 'Focal points and the WhatsApp flow', 'Who tells whom, and how fast.']];
+  const AWARDS = ['Best Excel Survivor', 'Fastest WhatsApp Reply', 'Calmest Under Pressure', 'Best Map Never Printed', 'Winning team of the retreat'];
+  const MONTHS = ['2 March 2026 · the escalation', 'March 2026', 'April 2026', 'May 2026', 'June 2026', 'July 2026', 'August 2026', 'September 2026', 'October 2026 · today'];
+  const half = (inner, cls) => `<div class="half ${cls || ''}">${inner}</div>`;
+  const page2 = (list, fn) => chunk(list, 2).map((g) => `<section class="sheet a4 halves">${g.map(fn).join('')}</section>`).join('');
+  const MORE = [
+    { k: 'teamsigns', t: 'Team table signs', n: () => '3 signs, one per round table (fold in half)', size: 'A4', render: () => teams.map((t) => `<section class="sheet a4 one fold ${tc(t.id)}">${['', ''].map(() => `<div class="foldhalf"><img src="/logo-t.png" alt="" style="height:14mm"><div class="tname">${esc(tname(t.id))}</div><div class="muted">Where the Waters Meet · Table ${t.id}</div></div>`).join('')}</section>`).join('') },
+    { k: 'stations', t: 'Pipes & Pumps station signs', n: () => '5 signs for the IM tools speed-dating', size: 'A4', render: () => STATIONS.map(([n, h, d]) => `<section class="sheet a4 one"><div class="sign"><img src="/logo-t.png" alt="" style="height:16mm"><div class="kick">Pipes & Pumps · Station ${n}</div><h2>${esc(h)}</h2><p>${esc(d)}</p><div class="lpw"><div><b>Love</b><span>one thing that works</span></div><div><b>Pain</b><span>one thing that hurts</span></div><div><b>Wish</b><span>one thing you want</span></div></div><p class="muted">6 minutes per station. Then vote keep, fix or kill on your phone.</p></div></section>`).join('') },
+    { k: 'timeline', t: 'Upstream timeline wall headers', n: () => '9 date headers and 1 colour key, 2 per page', size: 'A4', render: () => page2(MONTHS.map((m) => ['m', m]).concat([['key', '']]), ([k, m]) => k === 'key' ? half(`<div class="tl-key"><div class="kick">Upstream · timeline wall</div><div class="row3"><span class="sw g"></span>Green: it worked</div><div class="row3"><span class="sw r"></span>Red: it broke down</div><div class="row3"><span class="sw y"></span>Yellow: it surprised us</div></div>`) : half(`<div class="tl-head"><div class="kick">Upstream · timeline wall</div><div class="mo">${esc(m)}</div></div>`)) },
+    { k: 'murky', t: 'Murky Waters worksheets', n: () => '3 worksheets, one per team (with the Referrals extract)', size: 'A4', render: () => teams.map((t) => `<section class="sheet a4 one"><div class="sign" style="align-items:stretch;text-align:left"><div class="kick">Murky Waters · data detective · ${esc(tname(t.id))}</div><h2 style="font-size:24pt">Data problems we found</h2><p>8 minutes. One point per real problem. Then turn each into a rule for a future referral tool.</p><table class="ws"><thead><tr><th>#</th><th>Row</th><th>The problem</th><th>The rule that would stop it</th></tr></thead><tbody>${Array.from({ length: 14 }, (_, i) => `<tr><td>${i + 1}</td><td></td><td></td><td></td></tr>`).join('')}</tbody></table></div></section>`).join('') },
+    { k: 'postcards', t: 'Postcards to your future self', n: () => '20 postcards, 4 per page', size: 'A4 (cut into A6)', render: () => chunk(Array.from({ length: 20 }), 4).map((g) => `<section class="sheet a4 quarters">${g.map(() => `<div class="pc"><div class="kick">Ripples · a letter to my future self</div><div class="pcl">Dear me, in April 2027…</div>${Array.from({ length: 7 }, () => '<div class="ln"></div>').join('')}<div class="pcf"><span>From: ______________________</span><img src="/logo-t.png" alt=""></div></div>`).join('')}</section>`).join('') },
+    { k: 'awards', t: 'Golden Drop award certificates', n: () => AWARDS.length + ' certificates (write the name by hand)', size: 'A4 landscape', page: () => 'A4 landscape', render: () => AWARDS.map((a) => `<section class="sheet a4l"><div class="cert"><img src="/logo-t.png" alt="" style="height:18mm"><div class="kick">Where the Waters Meet · 22–23 October 2026</div><div class="gd">The Golden Drop</div><h2>${esc(a)}</h2><div class="to">awarded to</div><div class="nm"></div><div class="muted">WASH Sector Coordination Team · Lebanon</div></div></section>`).join('') },
+    { k: 'hotel', t: 'Hotel sheet: room setup and schedule', n: () => '1 page for the hotel', size: 'A4', render: () => `<section class="sheet a4 one"><div class="hotel"><div class="row" style="justify-content:space-between"><div><div class="kick">For the hotel</div><h2>WASH Coordination Team Retreat · 22–23 October 2026</h2></div><img src="/logo-t.png" alt="" style="height:14mm"></div>
+      <h3>Meeting room · Thursday 22 October, 09:30–16:00</h3><ul><li>3 round tables (6, 6 and 7 chairs) and 1 facilitator table at the front</li><li>5 small side tables along the walls (stations)</li><li>Screen and projector with HDMI, speakers, 1 wireless microphone if available</li><li>4 flip chart stands with paper and markers; permission to tape paper along one wall (about 5 m)</li><li>Open floor of about 4 × 3 m in front of the screen</li><li>Reliable Wi-Fi for about 20 phones; power extensions at the front and near the stations</li><li>Water on each table</li></ul>
+      <h3>Food and rooms</h3><ul><li>Open coffee station 10:00–12:00, in or beside the room, for 20</li><li>Lunch at 14:00 in the restaurant, for 20</li><li>Room check-in during lunch, 14:00–15:00, for 17 overnight guests</li><li>No hotel dinner on Thursday (we eat at Wadi Chamsine)</li><li>Breakfast on Friday 09:00–10:30, for 17</li><li>Check-out by 11:00 on Friday; we leave at 11:30</li><li>Dietary needs: [TO CONFIRM]</li></ul>
+      <p class="muted">Contact: Dr. Mahdi Wehbi, 70319729</p></div></section>` }
+  ];
+  ITEMS.splice(ITEMS.findIndex((x) => x.k === 'poster') + 1, 0, ...MORE);
+  const BRING = [
+    ['Badges', 'Badge holders and lanyards for 19 people'], ['Envelopes', '6 envelopes for the sealed theme cards and scenario cards'],
+    ['Sticky notes', 'Sticky notes in 3 colours: green, red, yellow (about 3 pads each)'], ['Dot stickers', 'Dot stickers, about 60 (3 per person)'],
+    ['Paper roll', 'A long paper roll (about 5 m) and masking tape for the timeline wall'], ['Tape', 'Masking tape for the Lebanon floor map'],
+    ['Markers', 'Markers for flip charts and sticky notes'], ['Flip charts', 'Flip chart pads (the hotel provides the 4 stands)'],
+    ['Balloons', 'Balloons (2 per team plus spares), bamboo skewers, a little cooking oil'], ['Helium stick', 'A light stick or tent pole, a blindfold, 20 paper cups'],
+    ['Marshmallow', 'Spaghetti, tape, string and marshmallows (marshmallow challenge)'], ['Prizes', 'Small prizes for the Golden Drop awards and the word race'],
+    ['Tech', 'Laptop, HDMI adapter, extension cable, clicker'], ['Power', 'Power banks for Day 2 at the lake'],
+    ['Day 2', 'Clipboards or a folder for each team leader (WAP deck, site and tent cards)'], ['Pens', 'Pens for the postcards and certificates'],
+    ['Referrals extract', 'Export the Referrals tab extract from the war sheet and print 3 copies (or send me the link and I put it on this page)'],
+    ['Reset', 'After testing: Host → Reset → Reset everything']];
 
   function roomsBox() {
     const B = beds(); const filled = B.filter((c) => c.room).length; const ans = store.get('wr-rooms-answer');
@@ -261,7 +313,7 @@
   function hub() {
     roomsBox();
     $('#items').innerHTML = ITEMS.map((it) => `<div class="item"><input type="checkbox" data-done="${it.k}" aria-label="${esc(it.t)} printed" ${store.get('wr-printed-' + it.k) ? 'checked' : ''}><div><strong>${esc(it.t)}</strong><span class="small muted">${esc(it.n())} · ${esc(it.size)}</span></div><button class="btn primary" data-open="${it.k}">Preview and print</button></div>`).join('');
-    $('#others').innerHTML = OTHERS.map(([k, t, d]) => `<div class="item"><input type="checkbox" data-done="${k}" aria-label="${esc(t)} printed" ${store.get('wr-printed-' + k) ? 'checked' : ''}><div><strong>${esc(t)}</strong><span class="small muted">${esc(d)}</span></div><span></span></div>`).join('');
+    $('#others').innerHTML = BRING.map(([t, d], i) => `<div class="item"><input type="checkbox" data-done="bring${i}" aria-label="${esc(t)} ready" ${store.get('wr-printed-bring' + i) ? 'checked' : ''}><div><strong>${esc(t)}</strong><span class="small muted">${esc(d)}</span></div><span></span></div>`).join('');
   }
   let cur = null, mode = null;
   function open(k, m) {
