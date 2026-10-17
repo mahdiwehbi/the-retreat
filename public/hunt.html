@@ -86,7 +86,7 @@
         ${won ? `<p class="notice ${won === me.team_id ? 'good' : ''}"><strong>${esc((teams.find((t) => t.id === won) || {}).name || '')}</strong> cracked it first!</p>` : ''}
         ${mineSolved ? '<p class="notice good">Your team cracked it.</p>' : left > 0 ? `<div class="row"><button class="btn primary" data-submit ${slots.length < len ? 'disabled' : ''}>Submit the boxes for ${esc(team.name)}</button><span class="how">${left} of 5 tries left${slots.length < len ? ` · or fill all ${len} boxes` : ''}</span></div>
           <form id="gf" class="row" style="margin-top:4px"><input id="guess" maxlength="60" autocomplete="off" aria-label="Type the whole message" placeholder="Or type the whole message" style="flex:1 1 180px;text-transform:uppercase" value="${esc(guessText)}"><button class="btn">Guess</button></form>
-          <span class="how">Missing letters (someone away)? You can type your guess for the whole message. Each guess uses 1 of the 5 tries, and a wrong guess costs 1 point.</span>` : '<p class="notice">Your team used its 5 tries.</p>'}
+          <span class="how">Missing letters (someone away)? You can type your guess for the whole message. Each guess uses 1 of the 5 tries: right on the 1st guess scores 3, 2nd 2, 3rd 1.</span>` : '<p class="notice">Your team used its 5 tries.</p>'}
       </section>` : '<section class="card"><p class="muted" style="margin:0">The word race starts after lunch. Then you will put your letters together with your team here.</p></section>'}
       <nav class="foot-links"><a href="/">Back to the game</a></nav>`;
   }
