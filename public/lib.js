@@ -171,6 +171,7 @@
         (ses.closes || []).forEach((g) => { const i = open.indexOf(g); if (i >= 0) open.splice(i, 1); });
         const lv = open.slice();
         s.push({ k: 'session', s: ses, live: lv });
+        if (ses.demo) for (let i = 0; i < 7; i++) s.push({ k: 'demo', s: ses, live: lv, i });
         if (ses.screen === 'hunt') { s.push({ k: 'hunt', s: ses, live: lv }); s.push({ k: 'raceres', s: ses, live: lv }); }
         acts.filter((a) => a.position >= ses.from && a.position <= ses.to).forEach((a) => { used.add(a.id); addQ(a); });
         if (ses.key === 'd1-close') { s.push({ k: 'teams' }); [1, 2, 3].forEach((n) => s.push({ k: 'podium', n })); }
@@ -185,7 +186,8 @@
       const i = steps.findIndex((x) => {
         if (x.k === 'lobby') return st.screen === 'lobby';
         if (x.k === 'end') return st.screen === 'session' && st.session_key === 'end';
-        if (x.k === 'session') return st.screen === 'session' && st.session_key === x.s.key;
+        if (x.k === 'session') return st.screen === 'session' && st.session_key === x.s.key && !(pr && pr.demo != null);
+        if (x.k === 'demo') return st.screen === 'session' && st.session_key === x.s.key && !!pr && pr.demo === x.i;
         if (x.k === 'hunt') return st.screen === 'hunt' && st.session_key === x.s.key && !(pr && pr.race);
         if (x.k === 'raceres') return st.screen === 'hunt' && st.session_key === x.s.key && !!(pr && pr.race);
         if (x.k === 'q') return st.screen === 'activity' && st.activity_id === x.a.id && st.phase !== 'reveal' && !(pr && pr.act === x.a.id);
@@ -209,7 +211,8 @@
       const pr = st && st.present;
       if (x.k === 'lobby') return { screen: 'lobby', live: ['register'] };
       if (x.k === 'end') return { screen: 'session', session: 'end', live: ['closed'] };
-      if (x.k === 'session') return { screen: 'session', session: x.s.key, live: x.live };
+      if (x.k === 'session') return { screen: 'session', session: x.s.key, live: x.live, present: null };
+      if (x.k === 'demo') return { screen: 'session', session: x.s.key, live: x.live, present: { demo: x.i } };
       if (x.k === 'hunt') return { screen: 'hunt', session: x.s.key, live: x.live, present: null };
       if (x.k === 'raceres') return { screen: 'hunt', session: x.s.key, live: x.live, present: { race: 'reveal' } };
       if (x.k === 'q') return { activity_id: x.a.id, screen: 'activity', phase: 'open', present: null };
@@ -225,6 +228,7 @@
       if (x.k === 'lobby') return 'Join screen';
       if (x.k === 'end') return 'Close the retreat (all QR codes say thank you)';
       if (x.k === 'session') return x.s.label + ': ' + x.s.title + (x.s.sub ? ' (' + x.s.sub + ')' : '');
+      if (x.k === 'demo') return 'Demo step ' + (x.i + 1) + ' of 7';
       if (x.k === 'hunt') return 'Word race on the screen';
       if (x.k === 'raceres') return 'Word race result: the message and the points';
       if (x.k === 'q') return '#' + x.a.position + ' ' + x.a.title;

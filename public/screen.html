@@ -33,6 +33,25 @@
   @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
   .podium.win .place{animation:rise .9s cubic-bezier(.2,.9,.3,1.2) both}.podium.win .p2{animation-delay:.4s}.podium.win .p1{animation-delay:.9s}.podium.win .p3{animation-delay:0s}
   @keyframes rise{from{transform:translateY(40%);opacity:0}to{transform:none;opacity:1}}
+  .birds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1em;flex:1;min-height:0}
+  .bird{background:var(--surface);border-radius:.6em;border-top:.35em solid var(--tc);padding:.7em .9em;display:flex;flex-direction:column;gap:.4em;min-height:0;overflow:hidden}
+  .bird .bh{display:flex;gap:.6em;align-items:center;color:var(--tc)}.bird .bh svg{width:3.4em;height:3.4em;flex:none}
+  .bird .bh b{display:block;font-family:var(--display);font-size:1.5em;color:var(--tc);line-height:1}.bird .bh span{font-size:.75em;color:var(--muted)}
+  .bird ol{margin:0;padding-left:1.4em;font-size:.95em;line-height:1.45;columns:1}
+  .demo{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:2em;align-items:center;flex:1;min-height:0}
+  .demo .cap{display:flex;flex-direction:column;gap:.5em}.demo .cap h1{font-family:var(--display);font-size:2.4em;line-height:1.05;margin:0}.demo .cap p{font-size:1.25em;margin:0;line-height:1.4}
+  .steps{display:flex;gap:.3em}.steps i{width:1.6em;height:.35em;border-radius:.2em;background:var(--line)}.steps i.on{background:var(--accent)}
+  .phone{justify-self:center;width:16em;height:29em;border-radius:2em;background:#1B2430;padding:.7em;box-shadow:0 .6em 2em rgba(0,0,0,.25);animation:pin .5s ease both}
+  @keyframes pin{from{transform:translateY(1em);opacity:0}to{transform:none;opacity:1}}
+  .phone .scr{background:#F4F8F8;border-radius:1.4em;height:100%;overflow:hidden;padding:.8em;display:flex;flex-direction:column;gap:.45em;font-size:.8em;color:#1B2430}
+  .phone .c{background:#fff;border:1px solid #d6e0e2;border-radius:.8em;padding:.6em .7em;display:flex;flex-direction:column;gap:.35em}
+  .phone .ey{font-size:.75em;font-weight:700;letter-spacing:.06em;color:var(--accent);text-transform:uppercase}
+  .phone .b{background:var(--accent);color:#fff;border-radius:.6em;padding:.55em;text-align:center;font-weight:700}
+  .phone .o{border:1px solid #d6e0e2;border-radius:.5em;padding:.35em .5em}.phone .o.sel{border-color:var(--accent);background:#E3F2F3;font-weight:700}
+  .phone .bad{background:#FDECEC;border-color:#F3B5B5}.phone .good{background:#E7F6EA;border-color:#A9DDB2}
+  .phone .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.35em}.phone .grid span{border:2px solid #d6e0e2;border-radius:.5em;text-align:center;padding:.5em 0;font-weight:800}.phone .grid .d{background:#2E7D32;color:#fff;border-color:#2E7D32}
+  .paper{background:#fff;border-radius:.5em;padding:.8em 1em;box-shadow:0 .3em 1em rgba(0,0,0,.12);font-size:.95em;line-height:1.45;transform:rotate(-1deg);border-top:.35em solid var(--accent)}
+  .typing{border-right:.12em solid var(--accent);animation:blink 1s step-end infinite}@keyframes blink{50%{border-color:transparent}}
   .kick{font-size:.75em;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
   .ttl{font-family:var(--display);font-weight:800;font-size:2.3em;line-height:1.05;letter-spacing:-.01em;text-wrap:balance;margin:0}
   .main{flex:1;min-height:0;display:flex;flex-direction:column;gap:1em}
@@ -182,13 +201,48 @@
     if (D.st.session_key === 'end') return `<div class="stack" style="gap:.6em;margin-block:auto;align-items:center;text-align:center"><img src="/logo.png" alt="WaSH Sector Lebanon" style="height:3em;width:auto"><h1 class="ttl" style="font-size:3.6em">Thank you for joining!</h1><div style="font-size:1.5em;color:var(--muted)">Where the Waters Meet · WASH Sector Coordination Team Retreat</div></div>`;
     const s = (window.WR_SESSIONS && WR_SESSIONS.get(D.st.session_key)) || null;
     if (!s) return vLobby();
+    if (s.demo && D.st.present && D.st.present.demo != null) return vDemo(s, D.st.present.demo);
     if (s.card) return `<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.4em;align-items:center;margin-block:auto"><div class="stack" style="gap:.5em"><div class="kick">Day ${s.day} · ${esc(s.label)} · ${esc(s.time)}</div><h1 class="ttl" style="font-size:3em">${esc(s.title)}</h1>${s.sub ? `<div style="font-size:1.3em;font-weight:600;color:var(--muted)">${esc(s.sub)}</div>` : ''}<ol class="sess-steps" style="font-size:1.2em">${s.show.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>
       <div class="wcard"><div class="wc-top">WHERE THE WATERS MEET · SAFE HARBOUR</div><div class="wc-h">Welcome, Waterman!</div><div class="wc-sub">This room is your safe harbour for tonight.</div><div class="wc-ticks">${['Be back at <b>15:00 sharp</b> in the meeting room', 'Be down at <b>17:00 sharp</b> to move to Wadi Chamsine', 'Take your breakfast and <b>check out before 11:00</b>', 'We move at <b>11:30 sharp</b> to Taanayel'].map((x) => `<div><span></span>${x}</div>`).join('')}</div><div class="wc-q">A message washed up in your room… scan it</div></div></div>`;
     return `<div class="stack" style="gap:.5em;margin-block:auto"><div class="kick">Day ${s.day} · ${esc(s.label)} · ${esc(s.time)}</div><h1 class="ttl" style="font-size:3.4em">${esc(s.title)}</h1>${s.sub ? `<div style="font-size:1.6em;font-weight:600;color:var(--muted)">${esc(s.sub)}</div>` : ''}
       <ol class="sess-steps">${s.show.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>`;
   }
+  // Team birds (simple drawings, in the team colour).
+  const BIRD = {
+    1: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M38 6c4 0 6 3 5 6l9 2-9 2c-1 4-4 6-6 9-3 5 2 11 1 18-1 6-7 9-13 9l-2 10h-2l2-10h-3l-1 10h-2l1-10c-5-2-7-7-6-12 2-8 12-10 16-16 2-4 1-8 2-12 1-3 4-6 8-6z" fill="currentColor"/></svg>',
+    2: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M30 14c9 0 15 6 16 13l16 3-16 3c-1 9-8 17-18 17-4 0-7-1-9-3l-9 7 4-10c-2-3-3-7-3-11 0-11 8-19 19-19z" fill="currentColor"/><circle cx="36" cy="25" r="2.5" fill="#fff"/></svg>',
+    3: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M27 4c5 0 7 4 6 8-1 3-4 4-6 7-2 4 0 7 4 9 8 4 15 9 13 17-1 5-6 8-12 8l-1 9h-2l1-9h-2l-4 9h-2l4-10c-6-2-9-7-8-13 1-5 5-8 9-11-4-2-7-6-6-11 1-4 3-6 6-7-2 0-4 1-5 2l-1-2c2-3 4-6 6-6z" fill="currentColor"/></svg>'
+  };
+  function vDemo(s, i) {
+    const opt = (t, sel) => `<div class="o ${sel ? 'sel' : ''}">${t}</div>`;
+    const ST = [
+      { h: '1 · Open the site test', p: 'Tomorrow at the lake, open the-retreat.site on your phone and tap <b>Site test</b>. Your team sees its own site: 1 site form and 3 tents.',
+        side: '', ph: `<div class="ey">WASH SAP test · Herons</div><div class="c"><b style="font-size:1.4em">Your site</b><div class="muted">One person takes the site form with the shawish. The others take one tent each.</div><div class="b">Fill the site form</div></div><div class="c"><b>Tents</b><div class="grid"><span>1</span><span>2</span><span>3</span></div></div>` },
+      { h: '2 · The site form', p: 'The team leader reads the <b>site card</b>: what the shawish tells you. Fill the site form from it: status, shelters, community tanks, latrines outside, desludging, bins.',
+        side: '<div class="paper"><b>Site card (example)</b><br>Shawish: Abu Khaled. Site active, 10 shelters, 2 to 4 m apart. Community storage: 2 × 1,000 L and 1 × 5,000 L tanks. 4 latrines outside; 3 improved and usable…</div>',
+        ph: `<div class="ey">Site form</div><div class="c"><b>Is the site currently empty?</b>${opt('Active site', 1)}${opt('Empty site')}</div><div class="c"><b>Shelters used for living</b><div class="o sel">10</div></div><div class="c"><b>Community 1,000 L tanks</b><div class="o sel typing">2</div></div>` },
+      { h: '3 · Scan a tent card', p: 'Each person takes a <b>tent card</b> and scans its QR code with the phone camera. It opens the household form for that tent, already linked to your site.',
+        side: '<div class="paper"><b>Tent card (example)</b><br>3 people live here, aged 59, 26, 22… Storage: 3 “five barrel” tanks, plus 4 jerrycans of 20 L… Kitchen water goes into a block-lined, covered pit with an open base…</div>',
+        ph: `<div class="ey">Household form · tent 1</div><div class="c"><b>How many people live here?</b><div class="o sel">3</div></div><div class="c"><b>How many are 60 or older?</b><div class="o sel">0</div><div class="muted">59 is still an adult</div></div><div class="c"><b>How many 1,000 L tanks?</b><div class="o typing">…</div></div>` },
+      { h: '4 · Not sure? Scan a helper card', p: '“A block-lined, covered pit with an open base”: what is that in WAP? Find the matching <b>helper card</b> in your leader’s set and scan it. It tells you the WAP name.',
+        side: '<div class="paper"><b>Helper card (example)</b><br>A hole with block walls and a concrete cover. The base is not sealed: liquid soaks into the soil, solids are desludged.</div>',
+        ph: `<div class="ey">Helper card</div><div class="c"><div class="muted">In WAP, this is</div><b style="font-size:1.8em;color:var(--accent)">Cesspit</b><div>Lined sides and a cover, but the base is not sealed.</div></div>` },
+      { h: '5 · Choose it in the form', p: 'Back in the household form, pick the answer the helper card gave you. Same for water sources and latrines: the helper cards are your WAP dictionary.',
+        side: '', ph: `<div class="ey">Household form · tent 1</div><div class="c"><b>Where does the greywater go?</b>${opt('Covered pit')}${opt('Cesspit', 1)}${opt('Septic tank')}${opt('Holding tank')}</div><div class="b">Send household</div>` },
+      { h: '6 · Send, and learn from it', p: 'When you send, the phone tells you right away what you got right and what you got wrong, with the WAP rule.',
+        side: '', ph: `<div class="c good"><b style="font-size:1.4em">17 of 19 right</b></div><div class="c bad"><b>1,000 L tanks</b><div>You: 0 · Card: 3</div><div class="muted">One barrel = 200 L, so “five barrels” = 1,000 L. Jerrycans don’t count.</div></div><div class="c bad"><b>60 or older</b><div>You: 1 · Card: 0</div><div class="muted">59 is still an adult.</div></div>` },
+      { h: '7 · Golden card and feedback', p: 'When the site form and the 3 tents are sent, your team unlocks the <b>golden card</b>: a team photo at the lake for 3 points. Then everyone fills the short <b>feedback form</b>.',
+        side: '', ph: `<div class="c" style="border-color:#C9A227"><b>Well done: site and tents sent!</b><div class="b" style="background:#C9A227">Golden card: your team photo (3 pts)</div><div class="b">Now the feedback form</div></div><div class="c"><b>Tents</b><div class="grid"><span class="d">1</span><span class="d">2</span><span class="d">3</span></div></div>` }
+    ];
+    const x = ST[Math.max(0, Math.min(ST.length - 1, i))];
+    return `<div class="top"><div class="stack" style="gap:.2em"><div class="kick">${esc(s.label)} · ${esc(s.title)} · demo</div></div><div class="steps">${ST.map((_, k) => `<i class="${k <= i ? 'on' : ''}"></i>`).join('')}</div></div>
+      <div class="demo"><div class="cap"><h1>${x.h}</h1><p>${x.p}</p>${x.side}</div><div class="phone" data-i="${i}"><div class="scr">${x.ph}</div></div></div>`;
+  }
   function vLobby() {
     const byTeam = D.teams.map((t) => ({ t, ps: D.players.filter((p) => p.team_id === t.id) }));
+    return `<div class="stack" style="gap:.4em;min-width:0;margin-bottom:.4em">
+      <div class="kick">${esc(WR.cfg.eventName)}</div><div class="ttl">Welcome! Scan your badge</div><div class="muted">${D.players.length} checked in</div></div>
+      <div class="birds">${byTeam.map(({ t, ps }) => `<div class="bird ${teamClass(t.id)}"><div class="bh">${BIRD[t.id] || ''}<div><b>${esc(t.name)}</b><span>${ps.length} checked in</span></div></div><ol>${ps.map((p) => `<li>${esc(p.name)}</li>`).join('')}</ol></div>`).join('')}</div>`;
     return `<div class="stack" style="gap:.6em;min-width:0;margin-bottom:.6em">
       <img src="/logo.png" alt="WaSH Sector Lebanon" style="height:2.4em;width:auto;align-self:flex-start"><div class="kick">${esc(WR.cfg.eventName)}</div><div class="ttl">Welcome! Scan your badge</div>
       <div class="muted">${D.players.length} checked in</div></div>
