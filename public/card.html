@@ -90,6 +90,13 @@
     if (b) b.addEventListener('click', async () => { try { me = await rpc('badge_checkin', { p_code: card.code }); WR.setMe(me); load(); } catch (e) { toast(e.message, 4000); } });
   }
 
+  // The golden card has one line per team ("Herons: …"); each team only sees its own.
+  function promptFor(c) {
+    if (c.grp !== 'golden') return c.prompt;
+    const ls = String(c.prompt || '').split('\n'); const nm = teamName().toLowerCase();
+    const mine = ls.find((l) => l.toLowerCase().startsWith(nm + ':'));
+    return mine ? ls[0] + '\n' + mine.slice(mine.indexOf(':') + 1).trim() : ls[0];
+  }
   function teamName() { const t = teams.find((x) => x.id === me.team_id); return t ? t.name : 'your team'; }
 
   function render(resultHtml) {
@@ -113,7 +120,7 @@
       <header class="spread"><span class="eyebrow">Treasure hunt · card ${esc(card.code)}</span><span class="chip ${teamClass(me.team_id)}"><span class="team-dot"></span>${esc(teamName())}</span></header>
       <section class="card">
         ${card.golden ? '<div class="chip" style="align-self:flex-start;color:var(--gold);border-color:var(--gold)">Golden card · double points</div>' : ''}
-        <h1 style="font-size:24px;white-space:pre-line">${esc(card.prompt)}</h1>
+        <h1 style="font-size:24px;white-space:pre-line">${esc(promptFor(card))}</h1>
         ${card.holder ? `<p class="small muted" style="margin:0">Card for <strong>${esc(card.holder)}</strong></p>` : ''}
         ${card.team_id && card.team_id !== me.team_id ? `<p class="notice bad" style="margin:0">This card belongs to another team. Give it back to ${esc(card.holder || 'its owner')}.</p>` : ''}
         ${resultHtml || ''}
