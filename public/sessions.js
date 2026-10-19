@@ -31,7 +31,7 @@ window.WR_SESSIONS = [
     host: ['Next puts the race on the screen.'] },
   { key: 'd1-s4', day: 1, label: 'Session 4', time: '15:15–15:40', title: 'Deep Waters', sub: 'Informal settlements: where we stand, what we need', from: 29, to: 30,
     show: ['Plenary discussion.', 'Where does the sector stand on informal settlements today?', 'What do we need?'],
-    host: ['Optional opener: balloon and skewer.'] },
+    host: ['Plenary: no phones needed.'] },
   { key: 'd1-brief', day: 1, label: 'Introduction to Day 2', time: '15:40–16:00', title: 'Tomorrow’s Expedition', sub: 'How tomorrow’s WAP exercise works', from: 0, to: -1, opens: ['practice', 'lake'], demo: true,
     show: ['Each team leader gets: 1 site card, 3 tent cards and the helper cards.', 'First fill the site form, then one household form per tent.', 'Tent and site cards point to helper cards (A, B, C): scan the helper card to see its WAP name.', 'Each tent form tells you right away what you got wrong, with the WAP rule. Let’s practise one tent now.'],
     host: ['Next plays the demo on the screen, step by step (7 steps). Then scan the practice tent card yourself: it does not count.'] },
