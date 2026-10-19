@@ -89,7 +89,7 @@
     app.innerHTML = `
       <header class="spread"><span class="eyebrow">WASH SAP test · ${esc(teamName(me.team_id))}</span><a class="small" href="/sap">Site summary</a></header>
       <section class="card"><h1 style="font-size:26px">${isSite ? 'Site form · shawish and observation' : tent.number === 0 ? 'Practice tent · household form' : `Household form · tent ${tent.number}`}</h1>
-        <p class="muted" style="margin:0">${isSite ? 'Read your team’s site card (the shawish interview) and fill what it says. Household numbers come from the household forms, not from here.' : 'Read the tent card as if you were interviewing the family and observing the shelter. Not sure what a tank, latrine or source is? Scan the matching helper card: it tells you what it is.'}</p></section>
+        <p class="muted" style="margin:0">${isSite ? 'Read your team’s site card (the shawish interview) and fill what it says. Household numbers come from the household forms, not from here.' : 'Read the tent card as if you were interviewing the family and observing the shelter. When the card says “helper card A5” (or B1, C3…), scan that helper card: it tells you the WAP name.'}</p></section>
       <form id="sf" class="card" novalidate>${fields.map(fieldHtml).join('')}
         ${isSite ? '' : `<div class="sec">KAP</div><label class="row" for="kapon" style="font-weight:600"><input id="kapon" type="checkbox" ${kapOn ? 'checked' : ''} style="width:auto"> Do the KAP for this household</label>
           <span class="hint">The site needs KAP for a sample of households only. Your summary shows how many are done.</span>${kapOn ? SAP.kap.map(fieldHtml).join('') : ''}`}
