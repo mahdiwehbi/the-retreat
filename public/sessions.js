@@ -38,9 +38,9 @@ window.WR_SESSIONS = [
   { key: 'd1-eoy', day: 1, label: 'Session 5', time: '15:40–16:00', title: 'EoY WASH Retreat', sub: 'End-of-year WASH retreat', from: 0, to: -1,
     show: ['EoY WASH Retreat.'], host: ['Plain slide for your discussion.'] },
   { key: 'd1-close', day: 1, label: 'Close of Day 1', time: '16:00', title: 'Sunset on the Shore', sub: 'One word, and the plan for tonight', from: 32, to: 32, closes: ['practice'],
-    show: ['One word for how you leave today.', 'Rest in your rooms. Be down at 17:00 sharp: we drive to Wadi Chamsine.', 'Tomorrow: check out before 11:00. We move at 11:30 sharp to Taanayel.'],
+    show: ['One word for how you leave today.', 'Rest in your rooms. Be down at 17:00 sharp: we drive to Wadi Chamsine.', 'Tomorrow: breakfast 08:00–10:00, check out by 10:00. We move at 10:30 sharp to Taanayel.'],
     host: ['Hand the site cards, tent cards and helper cards to the 3 team leaders.'] },
-  { key: 'd2-lake', day: 2, label: 'Day 2 · Taanayel', time: '12:00–13:30', title: 'The Expedition', sub: 'WAP test at the lake, then feedback', from: 0, to: -1, opens: ['sap', 'feedback'],
+  { key: 'd2-lake', day: 2, label: 'Day 2 · Taanayel', time: '11:00–13:30', title: 'The Expedition', sub: 'WAP test at the lake, then feedback', from: 0, to: -1, opens: ['sap', 'feedback'],
     show: ['Fill the site form, then the 3 tent forms.', 'Scan a helper card to see what it is.', 'When you are done: the feedback form on your phone.'],
     host: ['No screen on Day 2: open this from your phone (Host → Run → Next) before the lake, or the night before.'] }
 ];
