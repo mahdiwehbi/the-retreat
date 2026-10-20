@@ -186,6 +186,10 @@
     new QRCode(t, { text, width: 512, height: 512, correctLevel: QRCode.CorrectLevel.M });
     const c = t.querySelector('canvas'); return (cache[text] = c ? c.toDataURL('image/png') : '');
   }
+  // When an item last changed: a tick from before that date shows as "Changed: print again".
+  const CHANGED = { agenda: '2026-10-20T15:00:00Z', badges: '2026-10-20T15:00:00Z', beds: '2026-10-20T15:00:00Z', hotel: '2026-10-20T15:00:00Z',
+    spots: '2026-10-19T15:00:00Z', sites: '2026-10-19T15:00:00Z', tents: '2026-10-19T15:00:00Z' };
+  function isDone(it) { const v = store.get('wr-printed-' + it.k); if (!v) return false; const c = CHANGED[it.k]; if (!c) return true; const n = Number(v); return n > 1 && n >= Date.parse(c); }
   const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
   const host = location.host.replace(/^www\./, ''); const O = location.origin;
   let cards, spots, tents, teams;
@@ -349,8 +353,8 @@
   }
   function hub() {
     roomsBox();
-    $('#items').innerHTML = ITEMS.map((it) => `<div class="item"><input type="checkbox" data-done="${it.k}" aria-label="${esc(it.t)} printed" ${store.get('wr-printed-' + it.k) ? 'checked' : ''}><div><strong>${esc(it.t)}</strong><span class="small muted">${esc(it.n())} · ${esc(it.size)}</span></div><button class="btn primary" data-open="${it.k}">Preview and print</button></div>`).join('');
-    $('#others').innerHTML = BRING.map(([t, d], i) => `<div class="item"><input type="checkbox" data-done="bring${i}" aria-label="${esc(t)} ready" ${store.get('wr-printed-bring' + i) ? 'checked' : ''}><div><strong>${esc(t)}</strong><span class="small muted">${esc(d)}</span></div><span></span></div>`).join('');
+    $('#items').innerHTML = ITEMS.map((it) => `<div class="item"><input type="checkbox" data-done="${it.k}" aria-label="${esc(it.t)} printed" ${isDone(it) ? 'checked' : ''}><div><strong>${esc(it.t)}</strong>${!isDone(it) && store.get('wr-printed-' + it.k) ? ' <span class="chip" style="background:#FFE9B8;border-color:#E0B341;color:#5a4a1a">Changed: print again</span>' : ''}<span class="small muted">${esc(it.n())} · ${esc(it.size)}</span></div><button class="btn primary" data-open="${it.k}">Preview and print</button></div>`).join('');
+    $('#others').innerHTML = BRING.map(([t, d], i) => `<div class="item"><input type="checkbox" data-done="bring-${esc(t)}" aria-label="${esc(t)} ready" ${store.get('wr-printed-bring-' + t) ? 'checked' : ''}><div><strong>${esc(t)}</strong><span class="small muted">${esc(d)}</span></div><span></span></div>`).join('');
   }
   let cur = null, mode = null;
   function open(k, m) {
@@ -368,8 +372,8 @@
     if (t.dataset.open) open(t.dataset.open);
     else if (t.dataset.mode) open(cur.k, t.dataset.mode);
     else if (t.id === 'back') close();
-    else if (t.id === 'go') { window.print(); store.set('wr-printed-' + cur.k, '1'); }
-    else if (t.dataset.done) store.set('wr-printed-' + t.dataset.done, t.checked ? '1' : '');
+    else if (t.id === 'go') { window.print(); store.set('wr-printed-' + cur.k, String(Date.now())); }
+    else if (t.dataset.done) store.set('wr-printed-' + t.dataset.done, t.checked ? String(Date.now()) : '');
     else if (t.dataset.ans) { store.set('wr-rooms-answer', t.dataset.ans); roomsBox(); }
   });
   document.addEventListener('submit', async (e) => {
