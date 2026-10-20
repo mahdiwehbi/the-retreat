@@ -352,7 +352,7 @@
     const v = b.dataset.v, id = b.dataset.id;
     try {
       switch (b.dataset.do) {
-        case 'screen': await act('host_set_state', { p_patch: { screen: v } }); break;
+        case 'screen': await act('host_set_state', { p_patch: v === 'lobby' ? { screen: 'lobby', live: ['register'] } : { screen: v } }); break;
         case 'session': { const st = WR.flow.build(D.acts).find((x) => x.k === 'session' && x.s.key === v); await act('host_set_state', { p_patch: st ? WR.flow.patch(st) : { screen: 'session', session: v } }); break; }
         case 'sessionhunt': { const st = WR.flow.build(D.acts).find((x) => x.k === 'hunt' && x.s.key === v); await act('host_set_state', { p_patch: st ? WR.flow.patch(st) : { screen: 'hunt', session: v } }); break; }
         case 'live': { const cur = Array.isArray(D.st.live) ? D.st.live.slice() : []; const nx = cur.includes(v) ? cur.filter((x) => x !== v) : cur.concat(v); await act('host_set_state', { p_patch: { live: nx } }, (cur.includes(v) ? 'Closed: ' : 'Open: ') + WR.GROUPS[v]); paintTab(true); break; }
