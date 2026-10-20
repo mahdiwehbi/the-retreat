@@ -30,11 +30,30 @@
       // A name badge joins its owner straight into the team printed on it.
       try {
         const [b] = await rows('hunt_cards', (q) => q.ilike('code', code));
-        if (b && b.holder && b.team_id) { me = await rpc('badge_checkin', { p_code: b.code }); WR.setMe(me); fresh = true; }
+        if (b && b.holder && b.team_id) return confirmBadge(b);
       } catch (e) { app.innerHTML = `<section class="card" style="text-align:center"><div class="big-msg">Welcome!</div><p class="notice" style="margin:0">${esc(e.message)}</p></section>`; return; }
     }
     if (!me) return WR.renderJoin(app, (m) => { me = m; load(); });
     load();
+  }
+
+  // Nothing is saved until the person confirms the badge is theirs.
+  async function confirmBadge(b) {
+    let tn = '';
+    try { teams = await rows('teams', (q) => q.order('id')); const t = teams.find((x) => x.id === b.team_id); tn = t ? t.name : ''; } catch (e) {}
+    app.innerHTML = `<section class="card ${teamClass(b.team_id)}" style="text-align:center"><div class="eyebrow">WASH Coordination Team Retreat</div>
+      <p style="margin:0">This is the badge of</p><div class="big-msg">${esc(b.holder)}</div>${tn ? `<p style="margin:0"><span class="chip ${teamClass(b.team_id)}"><span class="team-dot"></span>${esc(tn)}</span></p>` : ''}
+      <p style="margin:0;font-weight:700">Is this you?</p>
+      <button class="btn primary block" data-act="yes">Yes, confirm my attendance</button>
+      <button class="btn block" data-act="no">Not me</button></section>`;
+    app.querySelector('[data-act="yes"]').addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      try { me = await rpc('badge_checkin', { p_code: b.code }); WR.setMe(me); fresh = true; load(); }
+      catch (err) { e.target.disabled = false; toast(err.message, 4000); }
+    });
+    app.querySelector('[data-act="no"]').addEventListener('click', () => {
+      app.innerHTML = `<section class="card" style="text-align:center"><div class="big-msg">No problem</div><p style="margin:0">Nothing was saved. Give this badge back to <strong>${esc(b.holder)}</strong> and scan your own badge.</p></section>`;
+    });
   }
 
   function manual() {
