@@ -19,13 +19,13 @@ window.SAP = (function () {
     { section: 'Water (W.1–W.15, at shelter level)' },
     ...HH_TANKS.map((s) => ({ id: 'tank_' + s, label: `How many ${s.toLocaleString('en')} L tanks at this shelter?`, type: 'number', small: true })),
     { id: 'shared_tank', label: 'Is any of these tanks shared with another family?', type: 'choice', options: YN, hint: 'Count a shared tank for one family only, so it is not counted twice.' },
-    { id: 'drink_source', label: 'Main source for drinking and cooking', type: 'choice', options: SRC },
-    { id: 'domestic_source', label: 'Main source for washing and cleaning', type: 'choice', options: SRC },
+    { id: 'drink_source', label: 'Main source for drinking and cooking', type: 'choice', options: SRC, helper: true },
+    { id: 'domestic_source', label: 'Main source for washing and cleaning', type: 'choice', options: SRC, helper: true },
     { id: 'pays_water', label: 'Does the household pay for water?', type: 'choice', options: YN },
     { section: 'Sanitation (at shelter level)' },
-    { id: 'greywater', label: 'Where does the shelter’s greywater go?', type: 'choice', options: GREY },
+    { id: 'greywater', label: 'Where does the shelter’s greywater go?', type: 'choice', options: GREY, helper: true },
     { id: 'latrine_inside', label: 'Is there a latrine inside the shelter?', type: 'choice', options: YN },
-    { id: 'latrine_ok', label: 'Is it improved and usable?', type: 'choice', options: YN, showIf: ['latrine_inside', 'Yes'] },
+    { id: 'latrine_ok', label: 'Is it improved and usable?', type: 'choice', options: YN, showIf: ['latrine_inside', 'Yes'], helper: true },
     { id: 'soap', label: 'Is there soap at the handwashing point?', type: 'choice', options: YN }
   ];
 
@@ -49,7 +49,7 @@ window.SAP = (function () {
     { section: 'Sanitation at site level' },
     { id: 'lat_out', label: 'S.12 · Latrines outside shelters', type: 'number' },
     { id: 'lat_out_ok', label: 'S.13 · How many of these are improved and usable?', type: 'number' },
-    { id: 'lat_out_disposal', label: 'Where do the outside latrines discharge?', type: 'choice', options: GREY },
+    { id: 'lat_out_disposal', label: 'Where do the outside latrines discharge?', type: 'choice', options: GREY, helper: true },
     { id: 'desludging', label: 'S.26 · How often do desludging trucks come?', type: 'choice', options: ['Every week or less', 'Every two weeks', 'Every month', 'Every two months', 'Every three months or more', 'Not needed', 'Not available'] },
     { section: 'Solid waste and environment' },
     { id: 'bins', label: 'M.1–M.8 · Number of large bins (all sizes)', type: 'number' },
