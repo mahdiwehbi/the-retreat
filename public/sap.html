@@ -116,7 +116,7 @@
         <p class="muted" style="margin:0">One person takes the site form with the shawish. Everyone else scans tent cards and fills a household form each. The summary adds it all up as you go.</p>
         <div class="row"><a class="btn primary" href="/sap?form=site">${S && S.siteDone ? 'Edit the site form' : 'Fill the site form'}</a></div>
         ${S && S.siteDone ? `<span class="hint">Site form sent${S.siteBy ? ' by ' + esc(S.siteBy) : ''}.</span>` : ''}</section>
-      ${S && S.siteDone ? `<section class="card"><strong>Now your ${tents.length} tents</strong><span class="hint">Scan the QR code on each tent card with your phone camera: it opens that tent's household form.</span>
+      ${S && S.siteDone ? `<section class="card"><strong>Now your ${tents.length} tents</strong><span class="hint">Tap a tent, then scan the QR code on its tent card: it opens that tent's household form.</span>
         <div class="tents">${tents.map((t) => `<span data-tip="${t.number}" class="${doneSet.has(t.number) ? 'done' : ''}" role="button" tabindex="0" aria-label="Tent ${t.number}${doneSet.has(t.number) ? ', sent' : ', not sent yet'}">${doneSet.has(t.number) ? '✓ ' : ''}${t.number === 0 ? 'P' : t.number}</span>`).join('')}</div></section>`
       : `<section class="card"><strong>Tents</strong><span class="hint">Your ${tents.length} tents appear here once the site form is sent.</span></section>`}
       ${S && S.siteDone && S.done >= S.need ? `<section class="card" style="border-color:var(--gold)"><strong>Well done: site and tents sent!</strong>
@@ -177,10 +177,35 @@
     window.scrollTo(0, 0);
   }
 
+  // Tap a tent box: the camera opens here; scanning the tent card opens its form.
+  let scanner = null;
+  async function openScanner(num) {
+    const t = tents.find((x) => String(x.number) === String(num));
+    let ov = document.getElementById('scan');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'scan'; document.body.appendChild(ov); }
+    ov.style.cssText = 'position:fixed;inset:0;z-index:50;background:rgba(10,20,30,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;color:#fff;text-align:center';
+    ov.innerHTML = `<strong style="font-size:20px">Scan the QR code on ${num === '0' ? 'the practice tent card' : 'tent card ' + esc(num)}</strong><div id="reader" style="width:min(92vw,420px);background:#000;border-radius:12px;overflow:hidden"></div><p id="scanmsg" class="small" style="margin:0;color:#cfe">Point the camera at the QR code.</p><button class="btn" data-act="scanclose" style="background:#fff">Cancel</button>`;
+    ov.addEventListener('click', (e) => { if (e.target.closest('[data-act="scanclose"]')) closeScanner(); if (e.target.closest('[data-act="scanopen"]') && t) location.href = '/sap?t=' + encodeURIComponent(t.code); });
+    try {
+      if (!window.Html5Qrcode && !window.__Html5QrcodeLibrary__) await new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
+      const Q = window.Html5Qrcode || (window.__Html5QrcodeLibrary__ || {}).Html5Qrcode; scanner = new Q('reader');
+      await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: 230 }, (txt) => {
+        let code = ''; try { code = (new URL(txt).searchParams.get('t') || '').toUpperCase(); } catch (e) { code = String(txt).trim().toUpperCase(); }
+        const hit = tents.find((x) => x.code.toUpperCase() === code);
+        if (!hit) { document.getElementById('scanmsg').textContent = 'That is not one of your team’s tent cards.'; return; }
+        closeScanner(); location.href = '/sap?t=' + encodeURIComponent(hit.code);
+      }, () => {});
+    } catch (err) {
+      document.getElementById('scanmsg').innerHTML = 'The camera did not open here. Allow the camera, or scan the card with your phone camera app.' + (t ? '<br><button class="btn primary" data-act="scanopen" style="margin-top:8px">Open tent ' + (t.number === 0 ? 'P' : t.number) + ' anyway</button>' : '');
+    }
+  }
+  async function closeScanner() { try { if (scanner) { await scanner.stop(); scanner.clear(); } } catch (e) {} scanner = null; const ov = document.getElementById('scan'); if (ov) ov.remove(); }
+
   /* ---------- events ---------- */
   app.addEventListener('click', (e) => {
     const tip = e.target.closest('[data-tip]');
-    if (tip) { toast(tip.dataset.tip === '0' ? 'Scan the QR code on the practice tent card' : 'Scan the QR code on tent card ' + tip.dataset.tip + ' with your phone camera', 3500); return; }
+    if (tip) { openScanner(tip.dataset.tip); return; }
+    if (e.target.closest('[data-act="scanclose"]')) { closeScanner(); return; }
     if (e.target.closest('[data-act="fix"]')) { renderForm(); window.scrollTo(0, 0); return; }
     const b = e.target.closest('[data-f]'); if (!b) return;
     form[b.dataset.f] = b.dataset.v;
