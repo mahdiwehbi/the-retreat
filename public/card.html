@@ -52,6 +52,8 @@
     } catch (e) { app.innerHTML = `<section class="card"><p class="notice bad">${esc(e.message)}</p></section>`; return; }
     if (WR.isLive(live, 'closed')) { WR.thanks(app); return; }
     if (!card) { app.innerHTML = `<section class="card"><h1 style="font-size:24px">Card not found</h1><p class="muted">The code ${esc(code)} is not part of this game. Check the code on the card.</p><a class="btn" href="/card">Type a code</a></section>`; return; }
+    // First scan of a badge = check-in: always show the welcome first.
+    if (fresh && card.grp === 'badges') return welcome();
     // Letter questions: where is this person? Badge → question 1, then question 2 (B card) if they have no room card.
     if (card.letter_index != null && WR.isLive(live, card.grp)) {
       try { mineCards = await rpc('hunt_my_team', { p_pid: me.id, p_token: me.token }); } catch (e) { mineCards = []; }
@@ -85,7 +87,8 @@
       ${other || (card.holder && me.name !== card.holder) ? `<p class="notice bad" style="margin:0">This badge is ${esc(card.holder || 'someone else')}'s. This phone is in the game as ${esc(me.name)}.</p><button class="btn block" data-act="iam">I am ${esc(card.holder)}: use my badge on this phone</button>` : ''}
       <p class="muted small" style="margin:0">Keep your badge with you all day.</p>
       <a class="btn primary block" href="/">Open the game</a></section>`;
-    if (fresh && !other) setTimeout(() => location.replace('/'), 3500);
+    // After the welcome: the badge question if it is open (Safe Harbour onward), else the current session.
+    if (fresh && !other) setTimeout(() => location.replace(card.letter_index != null && WR.isLive(live, card.grp) ? '/card?c=' + encodeURIComponent(card.code) : '/'), 3500);
     const b = app.querySelector('[data-act="iam"]');
     if (b) b.addEventListener('click', async () => { try { me = await rpc('badge_checkin', { p_code: card.code }); WR.setMe(me); load(); } catch (e) { toast(e.message, 4000); } });
   }
