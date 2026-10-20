@@ -115,6 +115,7 @@
   .ag>div{display:grid;grid-template-columns:28mm 1fr 46mm;gap:3mm;padding:1.8mm 2mm;border-bottom:0.2mm solid #d6e0e2;font-size:10.5pt}
   .ag>div span:last-child{color:var(--muted)}
   .ag>div.mv{background:#FFE9B8;font-weight:700}
+  .ag.det>div{padding:0.6mm 2mm;font-size:9pt;align-items:start;line-height:1.2}.agenda.det h3{margin:3mm 0 1mm;font-size:12pt}.agenda .ag.det{margin-bottom:0}.ag.det small{font-weight:400;color:var(--muted);font-size:8.5pt;line-height:1.3}.ag.det>div.mv small{color:#5a4a1a}
   .ag>div.mv span:last-child{color:var(--ink)}
   .key{display:inline-block;width:4mm;height:4mm;background:#FFE9B8;border:0.2mm solid #E0B95A;vertical-align:middle}
   .a4l{width:297mm;height:210mm;padding:12mm}
@@ -252,9 +253,41 @@
     <div class="row" style="justify-content:space-between;align-items:flex-end;border-bottom:0.8mm solid var(--accent);padding-bottom:3mm"><div><div style="font-size:9pt;font-weight:700;letter-spacing:.1em;color:var(--accent)">AGENDA · WASH SECTOR COORDINATION TEAM RETREAT</div><div style="font-family:Fraunces,serif;font-size:28pt;font-weight:700;line-height:1.05">Where the Waters Meet</div><div style="color:var(--muted)">22–23 October 2026 · Herons, Kingfishers, Flamingos</div></div><img src="/logo.png" alt="WaSH Sector Lebanon" style="height:15mm"></div>
     ${AGENDA.map(([d, rs]) => `<h3>${esc(d)}</h3><div class="ag">${rs.map(([t, a, pl, mv]) => `<div class="${mv ? 'mv' : ''}"><b>${esc(t)}</b><span>${mv ? '➜ ' : ''}${esc(a)}</span><span>${esc(pl)}</span></div>`).join('')}</div>`).join('')}
     <div class="row small" style="margin-top:4mm;gap:6mm"><span><span class="key"></span> Be there, or we move: times to watch</span><span>Contact: Dr. Mahdi Wehbi, 70319729</span></div></div></section>`;
+  // Detailed agenda: every session with what it really is. Move times are highlighted.
+  const DETAIL = [
+    ['Day 1 · Thursday 22 October', [
+      ['10:00', 'Arrival', 'Scan your badge at the welcome: your name appears on the screen', 'Hotel meeting room', 1],
+      ['10:00–10:30', 'The Source', 'Opening: welcome, attendance, where were you in the first week of the escalation?', 'Meeting room', 0],
+      ['10:30–12:00', 'Upstream', 'The war response: timeline with sticky notes, theme cards, team presentations, personal reflection', 'Meeting room', 0],
+      ['12:00–12:15', 'Water Break', 'Coffee and quiz on our response dashboard', 'Beside the meeting room', 0],
+      ['12:15–13:05', 'Pipes & Pumps', 'IM tools speed-dating: 5 stations, then keep, fix or kill', 'Meeting room', 0],
+      ['13:05–13:20', 'Murky Waters', 'Data detective on the 2026 Referrals tab', 'Meeting room', 0],
+      ['13:20–14:00', 'Flood Watch', 'What if? Three scenarios for the coming months', 'Meeting room', 0],
+      ['14:00–15:00', 'Safe Harbour', 'Lunch, pick up your room key, answer the questions on your badge and room card', 'Hotel restaurant', 1],
+      ['15:00–15:15', 'Message in a Bottle', 'Word race: crack the secret message with your team', 'Meeting room', 1],
+      ['15:15–15:40', 'Deep Waters', 'Informal settlements: where we stand, what we need', 'Meeting room', 0],
+      ['15:40–16:00', 'Tomorrow’s Expedition', 'Introduction to Day 2: demo of the WAP test and a practice tent', 'Meeting room', 0],
+      ['16:00', 'Sunset on the Shore', 'One word for how you leave today, team scores and podium. Then rest in your rooms', 'Meeting room → Hotel', 1],
+      ['17:00', 'We move', 'Gather at the hotel entrance, drive to Wadi Chamsine in our own cars', 'Hotel entrance', 1],
+      ['17:30–18:30', 'Rapids at Sunset', 'ATV ride', 'Wadi Chamsine', 0],
+      ['19:00–21:30', 'The Gathering', 'Dinner', 'Wadi Chamsine', 0],
+      ['21:30', 'Drive back', 'Back to the hotel, free evening', 'Wadi Chamsine → Hotel', 1]]],
+    ['Day 2 · Friday 23 October', [
+      ['09:00–10:30', 'Breakfast', '', 'Hotel', 0],
+      ['11:00', 'Check out', 'Rooms free, bags in the cars', 'Hotel', 1],
+      ['11:30', 'We move', 'Gather at the hotel entrance, drive to Taanayel Lake', 'Hotel entrance', 1],
+      ['12:00–13:30', 'The Expedition', 'WAP test: site form and 3 tents per team, golden photo, then the feedback form', 'Taanayel Lake', 0],
+      ['13:30', 'We move', 'Gather at the cars, drive to Chams', 'Taanayel Lake', 1],
+      ['14:00–16:00', 'Lunch and bowling', '', 'Chams', 0],
+      ['16:00', 'Departure', 'Home, safely', 'Chams', 1]]]];
+  const detailSheet = () => `<section class="sheet a4 one" style="padding:8mm 12mm"><div class="agenda det">
+    <div class="row" style="justify-content:space-between;align-items:flex-end;border-bottom:0.8mm solid var(--accent);padding-bottom:3mm"><div><div style="font-size:9pt;font-weight:700;letter-spacing:.1em;color:var(--accent)">AGENDA · WASH SECTOR COORDINATION TEAM RETREAT</div><div style="font-family:Fraunces,serif;font-size:26pt;font-weight:700;line-height:1.05">Where the Waters Meet</div><div style="color:var(--muted)">22–23 October 2026 · Herons, Kingfishers, Flamingos</div></div><img src="/logo.png" alt="WaSH Sector Lebanon" style="height:15mm"></div>
+    ${DETAIL.map(([d, rs]) => `<h3>${esc(d)}</h3><div class="ag det">${rs.map(([t, h, sub, pl, mv]) => `<div class="${mv ? 'mv' : ''}"><b>${esc(t)}</b><span><strong>${esc(h)}</strong>${sub ? `<br><small>${esc(sub)}</small>` : ''}</span><span>${esc(pl)}</span></div>`).join('')}</div>`).join('')}
+    <div class="row small" style="margin-top:3mm;gap:6mm"><span><span class="key"></span> Highlighted: be there on time, we move</span><span>Contact: Dr. Mahdi Wehbi, 70319729</span></div></div></section>`;
   const THEMES = [[1, 'Coordination and information flow', 'Meetings, reporting, data, and who decided what during the 2026 escalation.'], [2, 'Delivery in collective shelters', 'Water trucking, kits, latrines and desludging: what reached people, what did not.'], [3, 'Partners, government and the Water Establishments', 'Roles, handover and the gaps between us.']];
   const SCEN = [['A', 'Renewed escalation', 'Mass displacement in 48 hours. Collective shelters reopen across the country.'], ['B', 'Protracted crisis', 'Funding is cut by half and partners are leaving.'], ['C', 'Return and recovery', 'People go home to damaged water networks.']];
   const ITEMS = [
+    { k: 'agenda', t: 'Detailed agenda', n: () => '1 page, both days, every session', size: 'A4', render: () => detailSheet() },
     { k: 'badges', t: 'Name badges', n: () => badges().length + ' badges, agenda on the back', size: '100 × 135 mm, double-sided', modes: [['sheet', 'Badge paper 100 × 135'], ['a4', 'A4, 4 per sheet']],
       render: (m) => m === 'a4' ? duplexA4(badges()) : badges().map((c) => `<section class="sheet solo-badge">${badge(c)}</section><section class="sheet solo-badge">${back(c)}</section>`).join(''),
       page: (m) => m === 'a4' ? 'A4' : '100mm 135mm', hint: (m) => m === 'a4' ? 'Double-sided, flip on the long edge, at 100% (no "fit to page"). Then cut.' : 'Double-sided, 100 × 135 mm paper: front, then the agenda on the back.' },
