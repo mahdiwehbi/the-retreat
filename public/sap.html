@@ -62,7 +62,12 @@
   async function boot() {
     tents = (await rows('sap_tents', (q) => q.eq('team_id', me.team_id).order('number'))).filter((t) => (practiceOnly ? t.number === 0 : t.number > 0));
     if (practiceOnly && mode === 'home' && tents[0]) { location.replace('/sap?t=' + encodeURIComponent(tents[0].code)); return; }
-    if (mode === 'home') live(['sap_households', 'sap_sites'], refresh, 6000); else render();
+    if (mode === 'home') { live(['sap_households', 'sap_sites'], refresh, 6000); return; }
+    try { summary = await rpc('sap_summary', { p_team: me.team_id }); } catch (e) { summary = null; }
+    // Edit: open the form with what was sent.
+    if (mode === 'site' && summary && summary.site) form = { ...summary.site };
+    if (mode === 'hh') { const t = tents.find((x) => x.code === tentCode); const h = t && ((summary && summary.households) || []).find((x) => x.tent === t.number); if (h) form = { ...h }; }
+    render();
   }
   async function refresh() { summary = await rpc('sap_summary', { p_team: me.team_id }); if (mode === 'home') render(); }
   const teamName = (id) => (teams.find((t) => t.id === id) || {}).name || 'Team';
@@ -82,6 +87,10 @@
     const tent = tents.find((t) => t.code === tentCode);
     if (!isSite && !tent) {
       app.innerHTML = `<section class="card"><h1 style="font-size:24px">Tent card not found</h1><p class="muted">${tentCode ? `${esc(tentCode)} is not one of ${esc(teamName(me.team_id))}'s tents. Each team assesses its own site.` : ''}</p><a class="btn primary block" href="/sap">Back to your site</a></section>`;
+      return;
+    }
+    if (!isSite && tent.number > 0 && !(summary && summary.site && Object.keys(summary.site).length)) {
+      app.innerHTML = `<section class="card" style="text-align:center"><div class="eyebrow">Tent ${tent.number}</div><div class="big-msg">Site form first</div><p style="margin:0">Your team sends the site form first. Then scan this tent card again.</p><a class="btn primary block" href="/sap">Back to your site</a></section>`;
       return;
     }
     if (!started) started = new Date().toISOString();
@@ -107,8 +116,10 @@
         <p class="muted" style="margin:0">One person takes the site form with the shawish. Everyone else scans tent cards and fills a household form each. The summary adds it all up as you go.</p>
         <div class="row"><a class="btn primary" href="/sap?form=site">${S && S.siteDone ? 'Edit the site form' : 'Fill the site form'}</a></div>
         ${S && S.siteDone ? `<span class="hint">Site form sent${S.siteBy ? ' by ' + esc(S.siteBy) : ''}.</span>` : ''}</section>
-      <section class="card"><strong>Tents</strong><span class="hint">Scan a tent card's QR code, or tap a number.</span>
-        <div class="tents">${tents.map((t) => `<a class="${doneSet.has(t.number) ? 'done' : ''}" href="/sap?t=${encodeURIComponent(t.code)}" aria-label="Tent ${t.number}${doneSet.has(t.number) ? ', done' : ''}">${t.number === 0 ? 'P' : t.number}</a>`).join('')}</div></section>
+      ${S && S.siteDone ? `<section class="card"><strong>Now your ${tents.length} tents</strong><span class="hint">Scan the QR code on each tent card with your phone camera: it opens that tent's household form.</span>
+        <div class="tents">${tents.map((t) => `<span class="${doneSet.has(t.number) ? 'done' : ''}" aria-label="Tent ${t.number}${doneSet.has(t.number) ? ', sent' : ', not sent yet'}">${doneSet.has(t.number) ? '✓ ' : ''}${t.number === 0 ? 'P' : t.number}</span>`).join('')}</div>
+        <form id="tc" class="row" style="gap:6px"><input id="tcode" maxlength="10" autocapitalize="characters" autocomplete="off" aria-label="Tent code" placeholder="Can't scan? Type the code under the QR" style="flex:1"><button class="btn" type="submit">Open</button></form></section>`
+      : `<section class="card"><strong>Tents</strong><span class="hint">Your ${tents.length} tents appear here once the site form is sent.</span></section>`}
       ${S && S.siteDone && S.done >= S.need ? `<section class="card" style="border-color:var(--gold)"><strong>Well done: site and tents sent!</strong>
         <a class="btn block" href="/card?c=G1" style="border-color:var(--gold)">Golden card unlocked: your team photo (3 points)</a>
         <a class="btn primary block" href="/feedback">Now the feedback form</a></section>` : ''}
@@ -153,6 +164,20 @@
     window.scrollTo(0, 0);
   }
 
+  function showSiteReview(res) {
+    const diff = res.diff || []; const pct = res.total ? Math.round((res.right / res.total) * 100) : 0;
+    app.innerHTML = `
+      <header class="spread"><span class="eyebrow">Site form · feedback</span><a class="small" href="/sap">Site summary</a></header>
+      <section class="card" style="text-align:center"><div class="big-msg">${res.right} of ${res.total} right</div>
+        <div class="bar"><i style="width:${pct}%"></i></div>
+        <p class="muted" style="margin:0">${diff.length ? 'Here is what the site card really says, and the WAP rule behind it.' : 'Perfect site form. Well done!'}</p></section>
+      ${diff.map((d) => `<section class="card"><strong>${esc(SAP.siteLabel(d.field))}</strong>
+        <div class="row"><span class="chip" style="color:var(--bad);border-color:var(--bad)">You: ${esc(d.given || 'blank')}</span><span class="chip" style="color:var(--good);border-color:var(--good)">Card: ${esc(d.expected)}</span></div>
+        <p class="small" style="margin:0">${esc(SAP.siteRule[d.field] || '')}</p></section>`).join('')}
+      <section class="card"><div class="row">${diff.length ? '<button class="btn" data-act="fix">Fix and send again</button>' : ''}<a class="btn primary" href="/sap">Now the tents</a></div></section>`;
+    window.scrollTo(0, 0);
+  }
+
   /* ---------- events ---------- */
   app.addEventListener('click', (e) => {
     if (e.target.closest('[data-act="fix"]')) { renderForm(); window.scrollTo(0, 0); return; }
@@ -164,12 +189,14 @@
   app.addEventListener('input', (e) => { const id = e.target.dataset.n; if (id) form[id] = e.target.value.trim(); });
   app.addEventListener('change', (e) => { if (e.target.id === 'kapon') { kapOn = e.target.checked; const y = window.scrollY; renderForm(); window.scrollTo(0, y); } });
   app.addEventListener('submit', async (e) => {
+    if (e.target.id === 'tc') { e.preventDefault(); const v = ($('#tcode').value || '').trim(); if (v) location.href = '/sap?t=' + encodeURIComponent(v.toUpperCase()); return; }
     if (e.target.id !== 'sf') return;
     e.preventDefault();
     const btn = e.target.querySelector('button[type=submit]'); btn.disabled = true; btn.textContent = 'Sending…';
     try {
       if (mode === 'site') {
         await rpc('sap_save_site', { p_pid: me.id, p_token: me.token, p_data: form, p_started: started });
+        return showSiteReview(SAP.checkSite(me.team_id, form));
       } else {
         const data = {}; SAP.household.forEach((f) => { if (f.id && form[f.id] != null && form[f.id] !== '') data[f.id] = String(form[f.id]); });
         SAP.HH_TANKS.forEach((s) => { if (data['tank_' + s] == null) data['tank_' + s] = '0'; });

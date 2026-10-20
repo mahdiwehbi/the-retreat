@@ -66,6 +66,38 @@ window.SAP = (function () {
     3: ['Shawish: Um Hussein (Fatima Hussein). Site active, 10 shelters, more than 4 m apart.', 'An active WASH committee. Relations with the landlord are good; no eviction notice.', 'Community storage: 2 × 2,000 L tanks.', '6 latrines outside; all 6 improved and usable, connected to helper card A7, emptied every month.', '3 large bins, all waste collected. Insects negligible, no open defecation, no floods last year.']
   };
 
+  // What each site card really says, to check the site form after Send.
+  const T0 = { status: 'Active site', shelters: '10' };
+  const siteTruth = {
+    1: { ...T0, closeness: '2 to 4 meters', wash_group: 'Yes', landlord: 'Average', eviction: 'No', ctank_1000: '2', ctank_2000: '0', ctank_5000: '1', ctank_10000: '0', lat_out: '4', lat_out_ok: '3', lat_out_disposal: 'Cesspit', desludging: 'Every two months', bins: '2', waste: 'Yes – part of it', insects: 'Noticeable', open_def: 'None', floods: '2' },
+    2: { ...T0, closeness: 'Less than 2 meters', wash_group: 'No', landlord: 'Bad', eviction: 'Yes', ctank_1000: '0', ctank_2000: '0', ctank_5000: '0', ctank_10000: '1', lat_out: '2', lat_out_ok: '1', lat_out_disposal: 'Uncovered pit', desludging: 'Not available', bins: '0', waste: 'Nothing is collected', insects: 'Prevalent', open_def: 'Noticeable', floods: '3' },
+    3: { ...T0, closeness: 'More than 4 meters', wash_group: 'Yes', landlord: 'Good', eviction: 'No', ctank_1000: '0', ctank_2000: '2', ctank_5000: '0', ctank_10000: '0', lat_out: '6', lat_out_ok: '6', lat_out_disposal: 'Holding tank', desludging: 'Every month', bins: '3', waste: 'Yes – all of it', insects: 'Negligible', open_def: 'None', floods: '0' }
+  };
+  const siteRule = {
+    status: 'People live on the site today, so it is an active site.',
+    shelters: 'Count only the shelters used for living.',
+    closeness: 'Use the distance the shawish gives between shelters.',
+    wash_group: 'A volunteer or committee that looks after WASH counts as Yes.',
+    landlord: 'Use the shawish’s own words: good, average or bad.',
+    eviction: 'A verbal notice counts too, if it came in the last 3 months.',
+    lat_out: 'Only latrines outside the shelters go on the site form.',
+    lat_out_ok: 'Improved and usable: durable walls, privacy and safety, and it works.',
+    lat_out_disposal: 'Scan the helper card the site card names to get the WAP name.',
+    desludging: 'Pick how often the desludging truck really comes.',
+    bins: 'Count the large bins of all sizes.',
+    waste: 'All, part or nothing: what the shawish says is collected.',
+    insects: 'Use the level the card gives: negligible, noticeable or prevalent.',
+    open_def: 'If the card says no open defecation, the answer is None.',
+    floods: 'Count the floods in the last year (last winter).'
+  };
+  SITE_TANKS.forEach((sz) => { siteRule['ctank_' + sz] = 'Count community tanks by size: only the shared tanks of the site, not the household ones.'; });
+  function checkSite(team, data) {
+    const t = siteTruth[team] || {}; const diff = []; let right = 0;
+    Object.keys(t).forEach((k) => { const g = String(data[k] == null || data[k] === '' ? (/^ctank_/.test(k) ? '0' : '') : data[k]).trim(); if (g.toLowerCase() === String(t[k]).toLowerCase()) right++; else diff.push({ field: k, given: g, expected: t[k] }); });
+    return { right, total: Object.keys(t).length, diff };
+  }
+  const siteLabel = (id) => { const f = site.find((x) => x.id === id); return f ? f.label : id; };
+
   const sample = (N) => (N > 0 ? Math.round((1.28 * 1.28 * N) / (1.28 * 1.28 + 4 * 0.1 * 0.1 * (N - 1))) : 0);
   const n = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
 
@@ -115,5 +147,5 @@ window.SAP = (function () {
   HH_TANKS.forEach((sz) => { explain['tank_' + sz] = tankRule; });
   const label = (id) => { const f = household.find((x) => x.id === id); return f ? f.label : id; };
 
-  return { household, kap, site, siteCards, sample, summarise, HH_TANKS, SITE_TANKS, explain, label };
+  return { household, kap, site, siteCards, sample, summarise, HH_TANKS, SITE_TANKS, explain, label, checkSite, siteRule, siteLabel };
 })();

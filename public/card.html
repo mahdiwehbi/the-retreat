@@ -71,6 +71,19 @@
     } catch (e) { app.innerHTML = `<section class="card"><p class="notice bad">${esc(e.message)}</p></section>`; return; }
     if (WR.isLive(live, 'closed')) { WR.thanks(app); return; }
     if (!card) { app.innerHTML = `<section class="card"><h1 style="font-size:24px">Card not found</h1><p class="muted">The code ${esc(code)} is not part of this game. Check the code on the card.</p><a class="btn" href="/card">Type a code</a></section>`; return; }
+    // Letter questions belong to one person: someone else scanning it only sees whose it is.
+    const nm = (x) => String(x || '').trim().toLowerCase();
+    if (card.letter_index != null && card.holder && nm(me.name) !== nm(card.holder)) {
+      const first = esc(String(card.holder).split(' ')[0]);
+      app.innerHTML = `<section class="card ${teamClass(card.team_id || me.team_id)}" style="text-align:center"><div class="eyebrow">Treasure hunt</div><div class="big-msg">This is ${first}'s</div>
+        <p style="margin:0">This ${card.grp === 'rooms' ? 'room card' : 'badge'} belongs to <strong>${esc(card.holder)}</strong>. Its question is for ${first} only: give it back and scan your own.</p>
+        <p class="muted small" style="margin:0">This phone is in the game as ${esc(me.name)}.</p>
+        ${card.grp === 'badges' ? `<button class="btn block" data-act="iam">I am ${esc(card.holder)}: use my badge on this phone</button>` : ''}
+        <a class="btn primary block" href="/">Back to the game</a></section>`;
+      const ib = app.querySelector('[data-act="iam"]');
+      if (ib) ib.addEventListener('click', async () => { try { me = await rpc('badge_checkin', { p_code: card.code }); WR.setMe(me); fresh = true; load(); } catch (e) { toast(e.message, 4000); } });
+      return;
+    }
     // First scan of a badge = check-in: always show the welcome first.
     if (fresh && card.grp === 'badges') return welcome();
     // Letter questions: where is this person? Badge → question 1, then question 2 (B card) if they have no room card.

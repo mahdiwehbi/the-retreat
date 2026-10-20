@@ -6,7 +6,7 @@
 window.WR_THEME = { name: 'Where the Waters Meet', tagline: 'WASH Sector Coordination Team Retreat · 22–23 October 2026' };
 window.WR_SESSIONS = [
   { key: 'd1-open', day: 1, label: 'Opening', time: '10:00–10:30', title: 'The Source', sub: 'Welcome, attendance and where were you?', from: 1, to: 4, opens: ['register'],
-    show: ['Scan your badge: your name appears on the screen.', 'Look at the map of Lebanon on the floor.', 'Stand where you were in the first week of the escalation (2 March 2026).', 'Say one sentence: what were you doing that day?'],
+    show: ['Look at the map of Lebanon on the floor.', 'Stand where you were in the first week of the escalation (2 March 2026).', 'Say one sentence: what were you doing that day?'],
     host: ['Registration is open: everyone scans their badge; names appear on the join screen. Next locks it (badges still work for latecomers).', 'Tape a rough outline of Lebanon on the floor: North, Beirut, BML, Bekaa, South.', 'Announce the 3 teams and the points system.'] },
   { key: 'd1-s1', day: 1, label: 'Session 1', time: '10:30–12:00', title: 'Upstream', sub: 'The war response: what really happened', from: 5, to: 8, closes: ['register'],
     show: ['Three flip charts on the wall: What worked well · What did not work · What surprised us.', 'Write one idea per sticky note and put it on the right flip chart, near its date on the timeline.', 'Then each team opens its sealed theme card: what would we do differently, and who owns it?', 'Each team presents. Then one personal reflection on your phone.'],

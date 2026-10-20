@@ -91,6 +91,7 @@
   .lb-row{display:grid;grid-template-columns:2em minmax(0,1fr) 6em;gap:.8em;align-items:center;background:var(--surface);border:1px solid var(--line);border-left:.35em solid var(--tc);border-radius:.5em;padding:.4em .8em}
   .lb-row .rk{font-family:var(--display);font-weight:800;color:var(--muted)}
   .lb-row .nm{font-weight:600;overflow-wrap:anywhere}
+  .lb{position:relative;z-index:6}
   .lb-row .pt{font-family:var(--mono);font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
   .lb-row.first{font-size:1.15em}
   .podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2em;align-items:end;flex:1}
@@ -394,11 +395,14 @@
     if (D.race && D.race.word) {
       const w = D.race.word; const pat0 = String(H.pattern || '').split(',').map(Number).filter(Boolean); let p0 = 0;
       const tiles = (pat0.length ? pat0 : [w.length]).map((n) => { const g = w.slice(p0, p0 + n); p0 += n; return `<div class="tiles">${[...g].map((c) => `<span class="on" style="background:var(--accent);border-color:var(--accent)">${esc(c)}</span>`).join('')}</div>`; }).join('');
-      const R = (D.race.teams || []).map((r) => ({ ...r, total: r.questions + (r.bonus || 0) + (r.guess || 0) + r.helps + r.crack })).sort((a, b) => b.total - a.total);
-      const best = R[0];
-      return `${conf()}<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Message in a bottle · the result</div><h1 class="ttl">${best ? esc(teamName(best.team_id)) + ' win the word race!' : 'The message'}</h1></div></div>
+      // Only a team that cracked the message can win: cracked teams first, then the rest, each by points.
+      const solved = new Set((H.solved_teams || []).map(Number));
+      const R = (D.race.teams || []).map((r) => ({ ...r, cracked: solved.has(Number(r.team_id)) || (r.crack || 0) > 0, total: r.questions + (r.bonus || 0) + (r.guess || 0) + r.helps + r.crack }))
+        .sort((a, b) => (b.cracked - a.cracked) || (b.total - a.total));
+      const best = R[0] && R[0].cracked ? R[0] : null;
+      return `${best ? conf() : ''}<div class="top"><div class="stack" style="gap:.3em"><div class="kick">Message in a bottle · the result</div><h1 class="ttl">${best ? esc(teamName(best.team_id)) + ' win the word race!' : 'Nobody cracked the message!'}</h1>${best ? '' : '<div class="muted">Here it is. Points so far:</div>'}</div></div>
         <div style="display:flex;flex-wrap:wrap;gap:.6em 1.4em">${tiles}</div>
-        <div class="lb">${R.map((r, i) => `<div class="lb-row ${teamClass(r.team_id)} ${i === 0 ? 'first' : ''}"><span class="rk">${i + 1}</span><span class="nm">${esc(teamName(r.team_id))} <span class="muted" style="font-size:.55em">opened letters ${r.questions} + unopened ${r.bonus || 0} + guess ${r.guess || 0} + cracking ${r.crack}${r.helps ? ' ' + r.helps + ' helps' : ''}</span></span><span class="pt">${r.total}</span></div>`).join('')}</div>
+        <div class="lb">${R.map((r, i) => `<div class="lb-row ${teamClass(r.team_id)} ${i === 0 ? 'first' : ''}"><span class="rk">${i + 1}</span><span class="nm">${esc(teamName(r.team_id))}${r.cracked ? ' ✓' : ' <span class="muted" style="font-size:.55em">(not cracked)</span>'} <span class="muted" style="font-size:.55em">opened letters ${r.questions} + unopened ${r.bonus || 0} + guess ${r.guess || 0} + cracking ${r.crack}${r.helps ? ' ' + r.helps + ' helps' : ''}</span></span><span class="pt">${r.total}</span></div>`).join('')}</div>
         <div class="muted" style="font-size:.62em">How it scores: each opened letter 3 / 2 / 1 / 0 (question right on the 1st / 2nd / 3rd try / locked) · each letter not opened when you crack it 4 · the message 3 / 2 / 1 (right on the 1st / 2nd / 3rd guess) · first team to crack it +10, later +5 · each help −1.</div>`;
     }
     const pat = String(H.pattern || '').split(',').map(Number).filter(Boolean); const groups = pat.length ? pat : [H.length];
