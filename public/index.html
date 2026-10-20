@@ -147,6 +147,10 @@
     const u = ui[act.id] || (ui[act.id] = { a: (mine && mine.value.alloc) ? mine.value.alloc.slice() : items.map(() => 0) });
     while (u.a.length < items.length) u.a.push(0);
     const used = u.a.reduce((s, x) => s + x, 0); const stepN = budget >= 50 ? 10 : 1;
+    if (o.tick) return `<section class="card">${title}<p class="muted" style="margin:0">Tick every topic you want us to cover.</p>
+      ${items.map((it, i) => `<button class="btn block" data-act="atick" data-i="${i}" style="justify-content:flex-start;text-align:left;gap:10px;${u.a[i] ? 'border-color:var(--accent);background:var(--accent-soft,#E3F2F3);font-weight:700' : ''}" aria-pressed="${u.a[i] ? 'true' : 'false'}"><span style="font-size:20px">${u.a[i] ? '☑' : '☐'}</span><span style="overflow-wrap:anywhere">${esc(it)}</span></button>`).join('')}
+      <button class="btn primary block" data-act="sendalloc" ${used ? '' : 'disabled'}>${mine ? 'Update' : 'Send'} (${used} ticked)</button>
+      ${mine ? '<p class="muted small" style="margin:0">Sent. You can change it and send again.</p>' : ''}</section>`;
     return `<section class="card">${title}<div class="notice"><strong>${budget - used}</strong> of ${budget} left to give</div>
       ${items.map((it, i) => `<div class="alloc"><strong style="overflow-wrap:anywhere">${esc(it)}</strong><div class="step"><button data-act="aminus" data-i="${i}" data-n="${stepN}" aria-label="Less for ${esc(it)}">−</button><output>${u.a[i]}</output><button data-act="aplus" data-i="${i}" data-n="${stepN}" aria-label="More for ${esc(it)}">+</button></div></div>`).join('')}
       <button class="btn primary block" data-act="sendalloc" ${used ? '' : 'disabled'}>${mine ? 'Update' : 'Send'}</button>
@@ -168,7 +172,7 @@
       return waitingCard('Look at the screen', 'The next question will appear here. Keep this page open.');
     }
     const k = act.kind;
-    const title = `<div class="eyebrow">${KIND_LABEL[k] || ''}</div><h1 style="font-size:24px">${esc(act.title)}</h1>`;
+    const title = `<div class="eyebrow">${k === 'allocate' && act.options && act.options.tick ? 'Tick the topics' : (KIND_LABEL[k] || '')}</div><h1 style="font-size:24px">${esc(act.title)}</h1>`;
 
     if (st.phase === 'reveal' && k === 'quiz') {
       const right = mine && mine.correct;
@@ -290,6 +294,7 @@
       if (a === 'aplus') u.a[i] += Math.min(n, budget - used); else u.a[i] = Math.max(0, u.a[i] - n);
       render(true);
     }
+    if (a === 'atick') { const u = ui[act.id]; u.a[i] = u.a[i] ? 0 : 1; render(true); }
     if (a === 'sendalloc') send({ alloc: ui[act.id].a });
   });
   app.addEventListener('input', (e) => {

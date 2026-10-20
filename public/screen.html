@@ -33,6 +33,9 @@
   @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
   .podium.win .place{animation:rise .9s cubic-bezier(.2,.9,.3,1.2) both}.podium.win .p2{animation-delay:.4s}.podium.win .p1{animation-delay:.9s}.podium.win .p3{animation-delay:0s}
   @keyframes rise{from{transform:translateY(40%);opacity:0}to{transform:none;opacity:1}}
+  .eoy{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8em;flex:1;min-height:0;align-content:center;margin-top:.6em}
+  .eo{border-radius:1em;padding:.7em .9em;color:#1B2430;min-width:0}.eo .eh{display:flex;align-items:center;gap:.45em;color:var(--fg)}.eo .ei{font-size:1.6em}.eo b{font-size:1.15em;line-height:1.1}
+  .eo ul{margin:.4em 0 0;padding-left:1.1em;font-size:.88em;line-height:1.4}
   .birds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1em;flex:1;min-height:0}
   .bird{background:var(--surface);border-radius:.6em;border-top:.35em solid var(--tc);padding:.7em .9em;display:flex;flex-direction:column;gap:.4em;min-height:0;overflow:hidden}
   .bird .bh{display:flex;gap:.6em;align-items:center;color:var(--tc)}.bird .bh svg{width:3.4em;height:3.4em;flex:none}
@@ -202,10 +205,25 @@
     const s = (window.WR_SESSIONS && WR_SESSIONS.get(D.st.session_key)) || null;
     if (!s) return vLobby();
     if (s.demo && D.st.present && D.st.present.demo != null) return vDemo(s, D.st.present.demo);
+    if (s.key === 'd1-eoy') return vEoy(s);
     if (s.card) return `<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.4em;align-items:center;margin-block:auto"><div class="stack" style="gap:.5em"><div class="kick">Day ${s.day} · ${esc(s.label)} · ${esc(s.time)}</div><h1 class="ttl" style="font-size:3em">${esc(s.title)}</h1>${s.sub ? `<div style="font-size:1.3em;font-weight:600;color:var(--muted)">${esc(s.sub)}</div>` : ''}<ol class="sess-steps" style="font-size:1.2em">${s.show.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>
       <div class="wcard"><div class="wc-top">WHERE THE WATERS MEET · SAFE HARBOUR</div><div class="wc-h">Welcome, Waterman!</div><div class="wc-sub">This room is your safe harbour for tonight.</div><div class="wc-ticks">${['Be back at <b>15:00 sharp</b> in the meeting room', 'Be down at <b>17:00 sharp</b> to move to Wadi Chamsine', 'Take your breakfast and <b>check out before 10:00</b>', 'We move at <b>10:30 sharp</b> to Taanayel'].map((x) => `<div><span></span>${x}</div>`).join('')}</div><div class="wc-q">A message washed up in your room… scan it</div></div></div>`;
     return `<div class="stack" style="gap:.5em;margin-block:auto"><div class="kick">Day ${s.day} · ${esc(s.label)} · ${esc(s.time)}</div><h1 class="ttl" style="font-size:3.4em">${esc(s.title)}</h1>${s.sub ? `<div style="font-size:1.6em;font-weight:600;color:var(--muted)">${esc(s.sub)}</div>` : ''}
       <ol class="sess-steps">${s.show.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>`;
+  }
+  function vEoy(s) {
+    const T = [
+      ['💧', 'Water Quality', ['Monitoring and testing', 'Standards and compliance', 'Challenges and solutions'], '#DCEEFB', '#1F6FB2'],
+      ['🚨', 'Emergency Response', ['Preparedness and contingency', 'Lessons learned (2024–2026)', 'Gaps and priorities'], '#FDE3E1', '#C2412D'],
+      ['⛺', 'Informal Settlements (WAP)', ['WAP results and use', 'Where the sector stands', 'What we need'], '#FBE9D6', '#B5651D'],
+      ['⚙️', 'Sector Transition', ['Progress to date', 'Roles and handover', 'Capacity strengthening'], '#E2F3E4', '#2E7D32'],
+      ['🤝', 'Coordination & Partnerships', ['Government and Water Establishments', 'Role of national NGOs', 'Information management'], '#ECE5F7', '#6A3FA0'],
+      ['🎯', 'Looking Ahead (2027)', ['Priorities and opportunities', 'Sustainability', 'Resource mobilisation'], '#DDF4F0', '#11806F'],
+      ['💡', 'Suggested so far', ['Hygiene promotion', 'Inclusion (GESI)', 'Innovation & technology', 'Policy and advocacy'], '#FFF3CC', '#9A6B00'],
+      ['➕', 'What did we miss?', ['Tick what we should cover', 'Then add what is missing', 'On your phone, after this slide'], '#FFFFFF', '#0E6E73']
+    ];
+    return `<div class="top"><div class="stack" style="gap:.2em"><div class="kick">Day ${s.day} · ${esc(s.label)} · ${esc(s.time)} · ${esc(s.title)}</div><h1 class="ttl" style="font-size:2.3em">End-of-Year WaSH Sector Workshop</h1><div class="muted" style="font-size:1.05em">Discuss, prioritise and agree on the key themes and sessions. Next: tick on your phone what we should cover.</div></div></div>
+      <div class="eoy">${T.map(([ic, h, b, bg, fg]) => `<div class="eo" style="background:${bg};--fg:${fg}"><div class="eh"><span class="ei">${ic}</span><b>${esc(h)}</b></div><ul>${b.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}</div>`;
   }
   // Team birds (simple drawings, in the team colour).
   const BIRD = {
@@ -268,7 +286,7 @@
     if (a.kind === 'team') count = (D.entries || []).length;
     const status = st.phase === 'open' ? (a.kind === 'quiz' ? '' : `${count} ${({ board: 'notes', dots: 'people voted', team: 'teams writing' })[a.kind] || (count === 1 ? 'answer' : 'answers')}`)
       : st.phase === 'idle' ? 'Get ready' : st.phase === 'reveal' ? 'Answer' : 'Answers closed';
-    const head = `<div class="top"><div class="stack" style="gap:.3em;min-width:0"><div class="kick">${({ poll: 'Vote on your phone', quiz: 'Quiz', words: 'Word cloud', rating: 'Rating', open: 'Open question', board: 'Sticky notes · on your phone', dots: 'Dot vote · on your phone', team: 'Team worksheets', allocate: 'Share your points' })[a.kind]}</div><h1 class="ttl">${esc(a.title)}</h1></div>
+    const head = `<div class="top"><div class="stack" style="gap:.3em;min-width:0"><div class="kick">${({ poll: 'Vote on your phone', quiz: 'Quiz', words: 'Word cloud', rating: 'Rating', open: 'Open question', board: 'Sticky notes · on your phone', dots: 'Dot vote · on your phone', team: 'Team worksheets', allocate: (a.options && a.options.tick) ? 'Tick the topics · on your phone' : 'Share your points' })[a.kind]}</div><h1 class="ttl">${esc(a.title)}</h1></div>
       <div class="stack" style="align-items:flex-end;gap:.2em">${a.kind === 'quiz' && st.phase === 'open' ? `<span class="big-timer" data-timer></span><span class="muted">${count} answered</span>` : `<span class="muted">${status}</span>`}</div></div>`;
 
     if (st.phase === 'idle') return head + joinedBlock('Phones ready? Answers open in a moment.');
