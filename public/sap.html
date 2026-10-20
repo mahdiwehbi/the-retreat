@@ -117,8 +117,7 @@
         <div class="row"><a class="btn primary" href="/sap?form=site">${S && S.siteDone ? 'Edit the site form' : 'Fill the site form'}</a></div>
         ${S && S.siteDone ? `<span class="hint">Site form sent${S.siteBy ? ' by ' + esc(S.siteBy) : ''}.</span>` : ''}</section>
       ${S && S.siteDone ? `<section class="card"><strong>Now your ${tents.length} tents</strong><span class="hint">Scan the QR code on each tent card with your phone camera: it opens that tent's household form.</span>
-        <div class="tents">${tents.map((t) => `<span class="${doneSet.has(t.number) ? 'done' : ''}" aria-label="Tent ${t.number}${doneSet.has(t.number) ? ', sent' : ', not sent yet'}">${doneSet.has(t.number) ? '✓ ' : ''}${t.number === 0 ? 'P' : t.number}</span>`).join('')}</div>
-        <form id="tc" class="row" style="gap:6px"><input id="tcode" maxlength="10" autocapitalize="characters" autocomplete="off" aria-label="Tent code" placeholder="Can't scan? Type the code under the QR" style="flex:1"><button class="btn" type="submit">Open</button></form></section>`
+        <div class="tents">${tents.map((t) => `<span data-tip="${t.number}" class="${doneSet.has(t.number) ? 'done' : ''}" role="button" tabindex="0" aria-label="Tent ${t.number}${doneSet.has(t.number) ? ', sent' : ', not sent yet'}">${doneSet.has(t.number) ? '✓ ' : ''}${t.number === 0 ? 'P' : t.number}</span>`).join('')}</div></section>`
       : `<section class="card"><strong>Tents</strong><span class="hint">Your ${tents.length} tents appear here once the site form is sent.</span></section>`}
       ${S && S.siteDone && S.done >= S.need ? `<section class="card" style="border-color:var(--gold)"><strong>Well done: site and tents sent!</strong>
         <a class="btn block" href="/card?c=G1" style="border-color:var(--gold)">Golden card unlocked: your team photo (3 points)</a>
@@ -180,6 +179,8 @@
 
   /* ---------- events ---------- */
   app.addEventListener('click', (e) => {
+    const tip = e.target.closest('[data-tip]');
+    if (tip) { toast(tip.dataset.tip === '0' ? 'Scan the QR code on the practice tent card' : 'Scan the QR code on tent card ' + tip.dataset.tip + ' with your phone camera', 3500); return; }
     if (e.target.closest('[data-act="fix"]')) { renderForm(); window.scrollTo(0, 0); return; }
     const b = e.target.closest('[data-f]'); if (!b) return;
     form[b.dataset.f] = b.dataset.v;
