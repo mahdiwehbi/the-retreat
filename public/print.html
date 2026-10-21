@@ -331,8 +331,6 @@
     { k: 'beds', t: 'Room welcome cards', n: () => beds().length + ' cards, one per overnight guest', size: 'A5 landscape', modes: [['a5', 'A5 paper'], ['a4', 'A4, 2 per sheet']],
       render: (m) => m === 'a4' ? a4(beds(), 2, bed, 'a5x2') : beds().map((c) => `<section class="sheet solo-a5">${bed(c)}</section>`).join(''),
       page: (m) => m === 'a4' ? 'A4' : 'A5 landscape', hint: (m) => m === 'a4' ? 'Print at 100%, then cut across the middle.' : 'Pick A5, landscape, in the print dialog.' },
-    { k: 'map', t: 'Floor map of Lebanon (A3 pages)', n: (m) => 'The Source: tape the pages together on the floor', size: 'A3', modes: [['3x3', '3 × 3 pages (about 0.85 × 1.2 m)'], ['2x2', '2 × 2 (0.55 × 0.8 m)'], ['4x4', '4 × 4 (1.1 × 1.6 m)']],
-      render: (m) => mapPages(m || '3x3'), page: () => 'A3', hint: () => 'A3, portrait, at 100%. Cut each page on the dashed line, then tape them edge to edge from behind: A1 top left, row by row.' },
     { k: 'govs', t: 'Governorate signs (A3)', n: () => GOVS.length + ' signs: lay them out on the floor as a map of Lebanon', size: 'A3 landscape', render: () => govSigns(), page: () => 'A3 landscape', hint: () => 'A3, landscape, at 100%.' },
     { k: 'themes', t: 'Upstream theme cards', n: () => '3 cards, one per team, to seal in envelopes', size: 'A4',
       render: () => THEMES.map(([tm, h, p]) => `<section class="sheet a4 one"><div class="scen ${tc(tm)}" style="border-top-color:var(--tc)"><img src="/logo.png" alt="" style="height:14mm;align-self:flex-start"><div class="card" style="border:0;padding:0;align-items:flex-start"><div class="top">Upstream · Session 1 · ${esc(tname(tm))}</div></div><h2>${esc(h)}</h2><p>${esc(p)}</p><p><strong>Your team has 20 minutes.</strong> Look at the sticky notes on your theme. What happened, what would we do differently (start, stop or continue), and who owns it?</p><p>Write on the flip chart or on your phones. Then 3 minutes to present: the wheel picks the order.</p></div></section>`).join('') },
@@ -369,7 +367,7 @@
   const BRING = [
     ['Badges', 'Badge holders and lanyards for 20 people (19 participants + your facilitator badge)'], ['Envelopes', '6 envelopes for the sealed theme cards and scenario cards'],
     ['Sticky notes', 'Sticky notes in 3 colours: green, red, yellow (about 3 pads each)'],
-    ['Paper roll', 'A long paper roll (about 5 m) and masking tape for the timeline wall'], ['Tape', 'Masking tape for the Lebanon floor map'],
+    ['Paper roll', 'A long paper roll (about 5 m) and masking tape for the timeline wall'], ['Tape', 'Masking tape to fix the 8 governorate signs on the floor'],
     ['Markers', 'Markers for flip charts and sticky notes'], ['Flip charts', 'Flip chart pads (the hotel provides the 4 stands)'],
     ['Prizes', 'Small prizes for the 1st, 2nd and 3rd teams (podium at the end of Day 1)'],
     ['Tech', 'Laptop, HDMI adapter, extension cable, clicker'], ['Power', 'Power banks for Day 2 at the lake'],
