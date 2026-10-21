@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap">
 <style id="base">
   :root{--ink:#1B2430;--muted:#5B6573;--accent:#0A6E78;--line:#C8D8DA;--t1:#0A6E78;--t2:#C2410C;--t3:#6D28D9;--l1:#E3F2F3;--l2:#FBEADF;--l3:#EEE7FB}
-  *{box-sizing:border-box}
+  *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   [hidden]{display:none !important}
   @media screen{#out{zoom:var(--z,1.35)} #out .solo-badge{display:inline-block;margin:6mm}}
   body{margin:0;background:#E9EFF0;color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif}
@@ -290,7 +290,7 @@
     { k: 'agenda', t: 'Detailed agenda', n: () => '1 page, both days, every session', size: 'A4', render: () => detailSheet() },
     { k: 'badges', t: 'Name badges', n: () => badges().length + ' badges, agenda on the back', size: '100 × 135 mm, double-sided', modes: [['sheet', 'Badge paper 100 × 135'], ['a4', 'A4, 4 per sheet']],
       render: (m) => m === 'a4' ? duplexA4(badges()) : badges().map((c) => `<section class="sheet solo-badge">${badge(c)}</section><section class="sheet solo-badge">${back(c)}</section>`).join(''),
-      page: (m) => m === 'a4' ? 'A4' : '100mm 135mm', hint: (m) => m === 'a4' ? 'Double-sided, flip on the long edge, at 100% (no "fit to page"). Then cut.' : 'Double-sided, 100 × 135 mm paper: front, then the agenda on the back.' },
+      page: (m) => m === 'a4' ? 'A4' : '100mm 135mm', hint: (m) => m === 'a4' ? 'Double-sided, flip on the long edge, at 100% (no "fit to page"). Tick "Background graphics". Then cut.' : 'Double-sided, flip on the long edge, 100 × 135 mm paper at 100%. Tick "Background graphics" in More settings.' },
     { k: 'beds', t: 'Room welcome cards', n: () => beds().length + ' cards, one per overnight guest', size: 'A5 landscape', modes: [['a5', 'A5 paper'], ['a4', 'A4, 2 per sheet']],
       render: (m) => m === 'a4' ? a4(beds(), 2, bed, 'a5x2') : beds().map((c) => `<section class="sheet solo-a5">${bed(c)}</section>`).join(''),
       page: (m) => m === 'a4' ? 'A4' : 'A5 landscape', hint: (m) => m === 'a4' ? 'Print at 100%, then cut across the middle.' : 'Pick A5, landscape, in the print dialog.' },
